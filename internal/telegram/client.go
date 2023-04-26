@@ -1,6 +1,7 @@
 package telegram
 
 import (
+	"github.com/agopankov/binance/internal/binanceAPI"
 	"time"
 
 	tele "gopkg.in/telebot.v3"
@@ -30,9 +31,10 @@ func (c *Client) Start() {
 	c.bot.Start()
 }
 
-func (c *Client) HandleText(handler func(m *tele.Message)) {
+func (c *Client) HandleText(handler func(m *tele.Message), binanceClient *binanceAPI.Client) {
 	c.bot.Handle(tele.OnText, func(c tele.Context) error {
-		return c.Send("Hello!")
+		handler(c.Message())
+		return nil
 	})
 }
 
