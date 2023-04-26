@@ -2,6 +2,7 @@ package main
 
 import (
 	"github.com/agopankov/binance/internal/telegram"
+
 	"log"
 	"os"
 )
