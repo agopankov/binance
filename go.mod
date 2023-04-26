@@ -1,4 +1,4 @@
-module BinanceNotification
+module binance
 
 go 1.20
 
