@@ -1,4 +1,4 @@
-module binance
+module github.com/agopankov/binance
 
 go 1.20
 
