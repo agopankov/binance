@@ -1,7 +1,8 @@
-package binance
+package binanceAPI
 
 import (
 	"context"
+	"github.com/adshao/go-binance/v2"
 )
 
 type Client struct {
