@@ -1,0 +1,30 @@
+syntax = "proto3";
+
+package binance;
+
+option go_package = "github.com/agopankov/binance/internal/grpcbinance";
+
+service BinanceService {
+  rpc GetUSDTPrices (Empty) returns (USDTPricesResponse);
+  rpc Get24hChangePercent (Empty) returns (ChangePercentResponse);
+}
+
+message Empty {}
+
+message USDTPricesResponse {
+  repeated USDTPrice prices = 1;
+}
+
+message USDTPrice {
+  string symbol = 1;
+  double price = 2;
+}
+
+message ChangePercentResponse {
+  repeated ChangePercent change_percents = 1;
+}
+
+message ChangePercent {
+  string symbol = 1;
+  double change_percent = 2;
+}
