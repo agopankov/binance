@@ -2,10 +2,12 @@ package main
 
 import (
 	"context"
+	"crypto/tls"
 	"fmt"
 	"github.com/agopankov/binance/client/pkg/telegram"
 	"github.com/agopankov/binance/server/pkg/grpcbinance/proto"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
 	tele "gopkg.in/telebot.v3"
 	"log"
 	"os"
@@ -24,7 +26,7 @@ func main() {
 	_ = os.Getenv("BINANCE_SECRET_KEY")
 	botToken := os.Getenv("TELEGRAM_BOT_TOKEN")
 
-	conn, err := grpc.Dial("localhost:50051", grpc.WithInsecure())
+	conn, err := grpc.Dial("localhost:50051", grpc.WithTransportCredentials(credentials.NewTLS(&tls.Config{InsecureSkipVerify: true})))
 	if err != nil {
 		log.Fatalf("Failed to connect to gRPC server: %v", err)
 	}
@@ -41,13 +43,17 @@ func main() {
 		ctx := context.Background()
 		usdtPrices, err := binanceClient.GetUSDTPrices(ctx, &proto.Empty{})
 		if err != nil {
-			telegramClient.SendMessage(m.Sender, fmt.Sprintf("Error getting USDT prices: %v", err))
+			if _, err := telegramClient.SendMessage(m.Sender, fmt.Sprintf("Error getting USDT prices: %v", err)); err != nil {
+				log.Printf("Error sending message: %v", err)
+			}
 			return
 		}
 
 		changePercent, err := binanceClient.Get24HChangePercent(ctx, &proto.Empty{})
 		if err != nil {
-			telegramClient.SendMessage(m.Sender, fmt.Sprintf("Error getting 24h change percent: %v", err))
+			if _, err := telegramClient.SendMessage(m.Sender, fmt.Sprintf("Error getting 24h change percent: %v", err)); err != nil {
+				log.Printf("Error sending message: %v", err)
+			}
 			return
 		}
 
@@ -82,7 +88,9 @@ func main() {
 			sb.WriteString(fmt.Sprintf("%s: %.2f (24h change: %.2f%%)\n", formattedSymbol, symbolChange.PriceChange, symbolChange.PriceChangePct))
 		}
 
-		telegramClient.SendMessage(m.Sender, sb.String())
+		if _, err := telegramClient.SendMessage(m.Sender, sb.String()); err != nil {
+			log.Printf("Error sending message: %v", err)
+		}
 	}
 
 	telegramClient.HandleText(handler)
