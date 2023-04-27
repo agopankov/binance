@@ -9,8 +9,8 @@ import (
 )
 
 type BinanceServiceServer struct {
-	proto.UnimplementedBinanceServiceServer // Внедрите UnimplementedBinanceServiceServer
-	client                                  *binance.Client
+	proto.UnimplementedBinanceServiceServer
+	client *binance.Client
 }
 
 func NewBinanceServiceServer(apiKey, secretKey string) *BinanceServiceServer {
@@ -19,7 +19,7 @@ func NewBinanceServiceServer(apiKey, secretKey string) *BinanceServiceServer {
 	}
 }
 
-func (s *BinanceServiceServer) GetUSDTPrices(ctx context.Context, req *proto.Empty) (*proto.USDTPricesResponse, error) {
+func (s *BinanceServiceServer) GetUSDTPrices(ctx context.Context, _ *proto.Empty) (*proto.USDTPricesResponse, error) {
 	prices, err := s.client.NewListPricesService().Do(ctx)
 	if err != nil {
 		return nil, err
