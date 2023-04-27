@@ -30,7 +30,11 @@ func main() {
 	if err != nil {
 		log.Fatalf("Failed to connect to gRPC server: %v", err)
 	}
-	defer conn.Close()
+	defer func() {
+		if closeErr := conn.Close(); closeErr != nil {
+			log.Println("Error closing connection:", closeErr)
+		}
+	}()
 
 	binanceClient := proto.NewBinanceServiceClient(conn)
 
