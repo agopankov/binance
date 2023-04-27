@@ -2,8 +2,8 @@ package main
 
 import (
 	"fmt"
-	"github.com/agopankov/binance/server/internal/grpcbinance"
-	"github.com/agopankov/binance/server/proto"
+	"github.com/agopankov/binance/server/pkg/grpcbinance"
+	"github.com/agopankov/binance/server/pkg/grpcbinance/proto"
 	"google.golang.org/grpc"
 	"log"
 	"net"

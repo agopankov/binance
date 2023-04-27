@@ -3,12 +3,14 @@ package main
 import (
 	"context"
 	"fmt"
-	"github.com/agopankov/binance/client/internal/telegram"
-	"github.com/agopankov/binance/server/internal/grpcbinance"
+	"github.com/agopankov/binance/client/pkg/telegram"
+	"github.com/agopankov/binance/server/pkg/grpcbinance/proto"
 	"google.golang.org/grpc"
 	tele "gopkg.in/telebot.v3"
 	"log"
 	"os"
+	"sort"
+	"strings"
 )
 
 type SymbolChange struct {
@@ -28,30 +30,62 @@ func main() {
 	}
 	defer conn.Close()
 
-	binanceClient := grpcbinance.NewBinanceServiceClient(conn)
+	binanceClient := proto.NewBinanceServiceClient(conn)
 
 	telegramClient, err := telegram.NewClient(botToken, binanceClient)
 	if err != nil {
 		log.Fatalf("Error creating Telegram bot: %v", err)
 	}
 
-	telegramClient.HandleText(handleText)
+	handler := func(m *tele.Message) {
+		ctx := context.Background()
+		usdtPrices, err := binanceClient.GetUSDTPrices(ctx, &proto.Empty{})
+		if err != nil {
+			telegramClient.SendMessage(m.Sender, fmt.Sprintf("Error getting USDT prices: %v", err))
+			return
+		}
+
+		changePercent, err := binanceClient.Get24HChangePercent(ctx, &proto.Empty{})
+		if err != nil {
+			telegramClient.SendMessage(m.Sender, fmt.Sprintf("Error getting 24h change percent: %v", err))
+			return
+		}
+
+		var filteredSymbols []SymbolChange
+		for _, price := range usdtPrices.Prices {
+			change := 0.0
+			for _, changePercent := range changePercent.ChangePercents {
+				if price.Symbol == changePercent.Symbol {
+					change = changePercent.ChangePercent
+					break
+				}
+			}
+
+			if change < 20 {
+				continue
+			}
+			filteredSymbols = append(filteredSymbols, SymbolChange{
+				Symbol:         price.Symbol,
+				PriceChange:    price.Price,
+				PriceChangePct: change,
+			})
+		}
+
+		sort.Slice(filteredSymbols, func(i, j int) bool {
+			return filteredSymbols[i].PriceChangePct > filteredSymbols[j].PriceChangePct
+		})
+
+		var sb strings.Builder
+		sb.WriteString("Prices in USDT with more than 20% change in the last 24h:\n\n")
+		for _, symbolChange := range filteredSymbols {
+			formattedSymbol := strings.Replace(symbolChange.Symbol, "USDT", "/USDT", 1)
+			sb.WriteString(fmt.Sprintf("%s: %.2f (24h change: %.2f%%)\n", formattedSymbol, symbolChange.PriceChange, symbolChange.PriceChangePct))
+		}
+
+		telegramClient.SendMessage(m.Sender, sb.String())
+	}
+
+	telegramClient.HandleText(handler)
 
 	telegramClient.Start()
-}
-
-func handleText(m *tele.Message) {
-	ctx := context.Background()
-	usdtPrices, err := c.binanceClient.GetUSDTPrices(ctx, &grpcbinance.Empty{})
-	if err != nil {
-		c.SendMessage(m.Sender, fmt.Sprintf("Error getting USDT prices: %v", err))
-		return
-	}
-
-	changePercent, err := c.binanceClient.Get24HChangePercent(ctx, &grpcbinance.Empty{})
-	if err != nil {
-		c.SendMessage(m.Sender, fmt.Sprintf("Error getting 24h change percent: %v", err))
-		return
-	}
-
 }

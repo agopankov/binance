@@ -4,7 +4,7 @@
 // - protoc             v3.21.12
 // source: binance.proto
 
-package grpcbinance
+package proto
 
 import (
 	context "context"

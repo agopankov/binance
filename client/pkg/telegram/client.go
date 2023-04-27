@@ -1,6 +1,7 @@
 package telegram
 
 import (
+	"github.com/agopankov/binance/server/pkg/grpcbinance/proto"
 	"time"
 
 	tele "gopkg.in/telebot.v3"
@@ -9,9 +10,10 @@ import (
 type Client struct {
 	botToken      string
 	bot           *tele.Bot
-	binanceClient proto.BinanceServiceClient // Добавьте поле binanceClient
+	binanceClient proto.BinanceServiceClient // Обновленный тип поля binanceClient
 }
 
+// Добавьте аргумент binanceClient в функцию NewClient
 func NewClient(botToken string, binanceClient proto.BinanceServiceClient) (*Client, error) {
 	bot, err := tele.NewBot(tele.Settings{
 		Token:  botToken,
@@ -24,7 +26,7 @@ func NewClient(botToken string, binanceClient proto.BinanceServiceClient) (*Clie
 	return &Client{
 		botToken:      botToken,
 		bot:           bot,
-		binanceClient: binanceClient,
+		binanceClient: binanceClient, // Инициализируйте поле binanceClient
 	}, nil
 }
 
