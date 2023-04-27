@@ -13,7 +13,6 @@ type Client struct {
 	binanceClient proto.BinanceServiceClient // Обновленный тип поля binanceClient
 }
 
-// Добавьте аргумент binanceClient в функцию NewClient
 func NewClient(botToken string, binanceClient proto.BinanceServiceClient) (*Client, error) {
 	bot, err := tele.NewBot(tele.Settings{
 		Token:  botToken,
