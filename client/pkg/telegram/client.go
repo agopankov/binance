@@ -10,7 +10,7 @@ import (
 type Client struct {
 	botToken      string
 	bot           *tele.Bot
-	binanceClient proto.BinanceServiceClient // Обновленный тип поля binanceClient
+	binanceClient proto.BinanceServiceClient
 }
 
 func NewClient(botToken string, binanceClient proto.BinanceServiceClient) (*Client, error) {
@@ -25,7 +25,7 @@ func NewClient(botToken string, binanceClient proto.BinanceServiceClient) (*Clie
 	return &Client{
 		botToken:      botToken,
 		bot:           bot,
-		binanceClient: binanceClient, // Инициализируйте поле binanceClient
+		binanceClient: binanceClient,
 	}, nil
 }
 
