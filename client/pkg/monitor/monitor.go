@@ -61,79 +61,96 @@ func calculateChange(oldPrice, newPrice string) float64 {
 
 func MonitorPriceChanges(telegramClient *telegram.Client, binanceClient proto.BinanceServiceClient, chatID int64, secondChatID int64, trackerInstance *tracker.Tracker) {
 	ticker := time.NewTicker(5 * time.Second)
-	for range ticker.C {
-		ctx := context.Background()
-		usdtPrices, err := binanceClient.GetUSDTPrices(ctx, &proto.Empty{})
-		if err != nil {
-			log.Printf("Error getting USDT prices: %v", err)
-			continue
-		}
+	notifyTicker := time.NewTicker(15 * time.Minute)
 
-		changePercent, err := binanceClient.Get24HChangePercent(ctx, &proto.Empty{})
-		if err != nil {
-			log.Printf("Error getting 24h change percent: %v", err)
-			continue
-		}
-
-		var newTrackedSymbols []tracker.SymbolChange
-		for _, price := range usdtPrices.Prices {
-			change := 0.0
-			for _, changePercent := range changePercent.ChangePercents {
-				if price.Symbol == changePercent.Symbol {
-					change = changePercent.ChangePercent
-					break
-				}
-			}
-
-			if change >= 20 && !trackerInstance.IsTracked(price.Symbol) {
-				newSymbol := tracker.SymbolChange{
-					Symbol:         price.Symbol,
-					PriceChange:    fmt.Sprintf("%.8f", price.Price),
-					PriceChangePct: change,
-					AddedAt:        time.Now(),
-				}
-				trackerInstance.UpdateTrackedSymbol(newSymbol)
-				newTrackedSymbols = append(newTrackedSymbols, newSymbol)
-			}
-		}
-
-		for _, symbolChange := range newTrackedSymbols {
-			if time.Since(symbolChange.LastMessageSentAt) < 15*time.Minute {
-				continue
-			}
-
-			message := fmt.Sprintf("Symbol: %s\nPrice: %s\nChange: %.2f%%\n", symbolChange.Symbol, symbolChange.PriceChange, symbolChange.PriceChangePct)
-			recipient := &tele.User{ID: chatID}
-			_, err := telegramClient.SendMessage(recipient, message)
+	for {
+		select {
+		case <-ticker.C:
+			ctx := context.Background()
+			usdtPrices, err := binanceClient.GetUSDTPrices(ctx, &proto.Empty{})
 			if err != nil {
-				log.Printf("Error sending message: %v\n", err)
-			} else {
-				log.Printf("Sent message to chat ID %d: %s", chatID, message)
-				trackerInstance.MarkMessageSent(symbolChange.Symbol)
-			}
-		}
-
-		for symbol, symbolChange := range trackerInstance.GetTrackedSymbols() {
-			currentPrice := getPriceForSymbol(symbol, usdtPrices.Prices)
-			newChange := calculateChange(symbolChange.PriceChange, currentPrice)
-
-			if newChange < 20 {
-				trackerInstance.RemoveTrackedSymbol(symbol)
+				log.Printf("Error getting USDT prices: %v", err)
 				continue
 			}
 
-			if time.Since(symbolChange.AddedAt) <= 15*time.Minute && newChange >= symbolChange.PriceChangePct+10 {
-				message := fmt.Sprintf("Symbol: %s\nPrice: %s\nChange: %.2f%%\n", symbol, currentPrice, newChange)
-				recipient := &tele.User{ID: secondChatID}
+			changePercent, err := binanceClient.Get24HChangePercent(ctx, &proto.Empty{})
+			if err != nil {
+				log.Printf("Error getting 24h change percent: %v", err)
+				continue
+			}
+
+			var newTrackedSymbols []tracker.SymbolChange
+			for _, price := range usdtPrices.Prices {
+				change := 0.0
+				for _, changePercent := range changePercent.ChangePercents {
+					if price.Symbol == changePercent.Symbol {
+						change = changePercent.ChangePercent
+						break
+					}
+				}
+
+				if change >= 20 && !trackerInstance.IsTracked(price.Symbol) {
+					newSymbol := tracker.SymbolChange{
+						Symbol:         price.Symbol,
+						PriceChange:    fmt.Sprintf("%.8f", price.Price),
+						PriceChangePct: change,
+						AddedAt:        time.Now(),
+					}
+					trackerInstance.UpdateTrackedSymbol(newSymbol)
+					newTrackedSymbols = append(newTrackedSymbols, newSymbol)
+				}
+			}
+
+			for _, symbolChange := range newTrackedSymbols {
+				message := fmt.Sprintf("Symbol: %s\nPrice: %s\nChange: %.2f%%\n", symbolChange.Symbol, symbolChange.PriceChange, symbolChange.PriceChangePct)
+				recipient := &tele.User{ID: chatID}
 				_, err := telegramClient.SendMessage(recipient, message)
 				if err != nil {
 					log.Printf("Error sending message: %v\n", err)
 				}
 			}
 
-			symbolChange.PriceChange = currentPrice
-			symbolChange.PriceChangePct = newChange
-			trackerInstance.UpdateTrackedSymbol(symbolChange)
+			for symbol, symbolChange := range trackerInstance.GetTrackedSymbols() {
+				currentPrice := getPriceForSymbol(symbol, usdtPrices.Prices)
+				newChange := calculateChange(symbolChange.PriceChange, currentPrice)
+
+				if newChange < 20 {
+					trackerInstance.RemoveTrackedSymbol(symbol)
+					continue
+				}
+
+				if time.Since(symbolChange.AddedAt) <= 15*time.Minute && newChange >= symbolChange.PriceChangePct+10 {
+					message := fmt.Sprintf("Symbol: %s\nPrice: %s\nChange: %.2f%%\n", symbol, currentPrice, newChange)
+					recipient := &tele.User{ID: secondChatID}
+					_, err := telegramClient.SendMessage(recipient, message)
+					if err != nil {
+						log.Printf("Error sending message: %v\n", err)
+					}
+				}
+
+				symbolChange.PriceChange = currentPrice
+				symbolChange.PriceChangePct = newChange
+				trackerInstance.UpdateTrackedSymbol(symbolChange)
+			}
+		case <-notifyTicker.C:
+			ctx := context.Background()
+			usdtPrices, err := binanceClient.GetUSDTPrices(ctx, &proto.Empty{})
+			if err != nil {
+				log.Printf("Error getting USDT prices: %v", err)
+				continue
+			}
+
+			for symbol, symbolChange := range trackerInstance.GetTrackedSymbols() {
+				currentPrice := getPriceForSymbol(symbol, usdtPrices.Prices)
+				newChange := calculateChange(symbolChange.PriceChange, currentPrice)
+
+				message := fmt.Sprintf("Symbol: %s\nPrice: %s\nChange: %.2f%%\n", symbol, currentPrice, newChange)
+				recipient := &tele.User{ID: chatID}
+				_, err := telegramClient.SendMessage(recipient, message)
+				if err != nil {
+					log.Printf("Error sending message: %v\n", err)
+				}
+			}
 		}
 	}
 }
