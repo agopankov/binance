@@ -33,6 +33,10 @@ func (c *Client) Start() {
 	c.bot.Start()
 }
 
+func (c *Client) Bot() *tele.Bot {
+	return c.bot
+}
+
 func (c *Client) HandleText(handler func(m *tele.Message)) {
 	c.bot.Handle(tele.OnText, func(c tele.Context) error {
 		handler(c.Message())
