@@ -2,17 +2,16 @@ package main
 
 import (
 	"context"
-	"crypto/tls"
 	"fmt"
 	"github.com/agopankov/binance/client/pkg/telegram"
 	"github.com/agopankov/binance/server/pkg/grpcbinance/proto"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials"
 	tele "gopkg.in/telebot.v3"
 	"log"
 	"os"
 	"sort"
 	"strings"
+	"time"
 )
 
 type SymbolChange struct {
@@ -22,19 +21,13 @@ type SymbolChange struct {
 }
 
 func main() {
-	_ = os.Getenv("BINANCE_API_KEY")
-	_ = os.Getenv("BINANCE_SECRET_KEY")
 	botToken := os.Getenv("TELEGRAM_BOT_TOKEN")
 
-	conn, err := grpc.Dial("localhost:50051", grpc.WithTransportCredentials(credentials.NewTLS(&tls.Config{InsecureSkipVerify: true})))
+	conn, err := grpc.Dial("localhost:50051", grpc.WithInsecure())
 	if err != nil {
 		log.Fatalf("Failed to connect to gRPC server: %v", err)
 	}
-	defer func() {
-		if closeErr := conn.Close(); closeErr != nil {
-			log.Println("Error closing connection:", closeErr)
-		}
-	}()
+	defer conn.Close()
 
 	binanceClient := proto.NewBinanceServiceClient(conn)
 
@@ -43,22 +36,37 @@ func main() {
 		log.Fatalf("Error creating Telegram bot: %v", err)
 	}
 
-	handler := func(m *tele.Message) {
+	telegramClient.HandleCommand("start", func(m *tele.Message) {
+		log.Printf("Received /start command from chat ID %d", m.Sender.ID)
+
+		chatID := int64(m.Sender.ID)
+		go monitorPriceChanges(telegramClient, binanceClient, chatID)
+
+		recipient := &tele.User{ID: chatID}
+		if _, err := telegramClient.SendMessage(recipient, "Hi"); err != nil {
+			log.Printf("Error sending message: %v", err)
+		} else {
+			log.Printf("Sent message to chat ID %d: %s", chatID, "Hi")
+		}
+	})
+
+	telegramClient.Start()
+}
+
+func monitorPriceChanges(telegramClient *telegram.Client, binanceClient proto.BinanceServiceClient, chatID int64) {
+	ticker := time.NewTicker(10 * time.Second)
+	for range ticker.C {
 		ctx := context.Background()
 		usdtPrices, err := binanceClient.GetUSDTPrices(ctx, &proto.Empty{})
 		if err != nil {
-			if _, err := telegramClient.SendMessage(m.Sender, fmt.Sprintf("Error getting USDT prices: %v", err)); err != nil {
-				log.Printf("Error sending message: %v", err)
-			}
-			return
+			log.Printf("Error getting USDT prices: %v", err)
+			continue
 		}
 
 		changePercent, err := binanceClient.Get24HChangePercent(ctx, &proto.Empty{})
 		if err != nil {
-			if _, err := telegramClient.SendMessage(m.Sender, fmt.Sprintf("Error getting 24h change percent: %v", err)); err != nil {
-				log.Printf("Error sending message: %v", err)
-			}
-			return
+			log.Printf("Error getting 24h change percent: %v", err)
+			continue
 		}
 
 		var filteredSymbols []SymbolChange
@@ -91,13 +99,16 @@ func main() {
 			formattedSymbol := strings.Replace(symbolChange.Symbol, "USDT", "/USDT", 1)
 			sb.WriteString(fmt.Sprintf("%s: %.2f (24h change: %.2f%%)\n", formattedSymbol, symbolChange.PriceChange, symbolChange.PriceChangePct))
 		}
-
-		if _, err := telegramClient.SendMessage(m.Sender, sb.String()); err != nil {
-			log.Printf("Error sending message: %v", err)
+		message := sb.String()
+		if message != "" {
+			recipient := &tele.User{ID: chatID}
+			if _, err := telegramClient.SendMessage(recipient, message); err != nil {
+				log.Printf("Error sending message: %v", err)
+			} else {
+				log.Printf("Sent message to chat ID %d: %s", chatID, message)
+			}
+		} else {
+			log.Printf("No symbols with 20%% change to report.")
 		}
 	}
-
-	telegramClient.HandleText(handler)
-
-	telegramClient.Start()
 }

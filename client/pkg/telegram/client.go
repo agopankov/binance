@@ -43,3 +43,10 @@ func (c *Client) HandleText(handler func(m *tele.Message)) {
 func (c *Client) SendMessage(recipient *tele.User, text string) (*tele.Message, error) {
 	return c.bot.Send(recipient, text)
 }
+
+func (c *Client) HandleCommand(command string, handler func(m *tele.Message)) {
+	c.bot.Handle(command, func(c tele.Context) error {
+		handler(c.Message())
+		return nil
+	})
+}

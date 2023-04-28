@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"github.com/agopankov/binance/server/pkg/grpcbinance"
 	"github.com/agopankov/binance/server/pkg/grpcbinance/proto"
 	"google.golang.org/grpc"
@@ -24,8 +23,12 @@ func main() {
 		log.Fatalf("Failed to listen on port 50051: %v", err)
 	}
 
-	fmt.Println("Starting gRPC server on port 50051...")
-	if err := grpcServer.Serve(listener); err != nil {
-		log.Fatalf("Failed to serve gRPC server: %v", err)
-	}
+	go func() {
+		if err := grpcServer.Serve(listener); err != nil {
+			log.Fatalf("Failed to serve gRPC server: %v", err)
+		}
+	}()
+
+	log.Println("gRPC server started successfully")
+	select {}
 }
