@@ -54,7 +54,7 @@ func main() {
 }
 
 func monitorPriceChanges(telegramClient *telegram.Client, binanceClient proto.BinanceServiceClient, chatID int64) {
-	ticker := time.NewTicker(10 * time.Second)
+	ticker := time.NewTicker(15 * time.Minute)
 	for range ticker.C {
 		ctx := context.Background()
 		usdtPrices, err := binanceClient.GetUSDTPrices(ctx, &proto.Empty{})
@@ -94,7 +94,6 @@ func monitorPriceChanges(telegramClient *telegram.Client, binanceClient proto.Bi
 		})
 
 		var sb strings.Builder
-		sb.WriteString("Prices in USDT with more than 20% change in the last 24h:\n\n")
 		for _, symbolChange := range filteredSymbols {
 			formattedSymbol := strings.Replace(symbolChange.Symbol, "USDT", "/USDT", 1)
 			sb.WriteString(fmt.Sprintf("%s: %.2f (24h change: %.2f%%)\n", formattedSymbol, symbolChange.PriceChange, symbolChange.PriceChangePct))
