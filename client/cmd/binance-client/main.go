@@ -51,5 +51,17 @@ func main() {
 		}
 	})
 
+	secondTelegramClient.HandleCommand("start", func(m *tele.Message) {
+		log.Printf("Received /start command from second chat ID %d", m.Sender.ID)
+
+		chatID := int64(m.Sender.ID)
+		recipient := &tele.User{ID: chatID}
+		if _, err := secondTelegramClient.SendMessage(recipient, "Hi"); err != nil {
+			log.Printf("Error sending message to second chat: %v", err)
+		} else {
+			log.Printf("Sent message to second chat ID %d: %s", chatID, "Hi")
+		}
+	})
+
 	telegramClient.Start()
 }
