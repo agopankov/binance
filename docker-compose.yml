@@ -20,5 +20,6 @@ services:
     image: binance-client
     environment:
       TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
+      TELEGRAM_BOT_TOKEN_SECOND: ${TELEGRAM_BOT_TOKEN_SECOND}
     depends_on:
       - binance-server

@@ -6,10 +6,11 @@ import (
 )
 
 type SymbolChange struct {
-	Symbol         string
-	PriceChange    string
-	PriceChangePct float64
-	AddedAt        time.Time
+	Symbol            string
+	PriceChange       string
+	PriceChangePct    float64
+	AddedAt           time.Time
+	LastMessageSentAt time.Time
 }
 
 type Tracker struct {
@@ -45,10 +46,19 @@ func (t *Tracker) RemoveTrackedSymbol(symbol string) {
 func (t *Tracker) GetTrackedSymbols() map[string]SymbolChange {
 	t.mu.RLock()
 	defer t.mu.RUnlock()
-	// Создание копии карты перед возвратом, чтобы избежать конкурирующих изменений.
 	copiedSymbols := make(map[string]SymbolChange)
 	for k, v := range t.trackedSymbols {
 		copiedSymbols[k] = v
 	}
 	return copiedSymbols
+}
+
+func (t *Tracker) MarkMessageSent(symbol string) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+
+	if trackedSymbol, ok := t.trackedSymbols[symbol]; ok {
+		trackedSymbol.LastMessageSentAt = time.Now()
+		t.trackedSymbols[symbol] = trackedSymbol
+	}
 }

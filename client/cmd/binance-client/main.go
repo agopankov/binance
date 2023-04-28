@@ -63,5 +63,6 @@ func main() {
 		}
 	})
 
+	go secondTelegramClient.Start()
 	telegramClient.Start()
 }

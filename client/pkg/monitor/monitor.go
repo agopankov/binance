@@ -98,11 +98,18 @@ func MonitorPriceChanges(telegramClient *telegram.Client, binanceClient proto.Bi
 		}
 
 		for _, symbolChange := range newTrackedSymbols {
+			if time.Since(symbolChange.LastMessageSentAt) < 15*time.Minute {
+				continue
+			}
+
 			message := fmt.Sprintf("Symbol: %s\nPrice: %s\nChange: %.2f%%\n", symbolChange.Symbol, symbolChange.PriceChange, symbolChange.PriceChangePct)
 			recipient := &tele.User{ID: chatID}
 			_, err := telegramClient.SendMessage(recipient, message)
 			if err != nil {
 				log.Printf("Error sending message: %v\n", err)
+			} else {
+				log.Printf("Sent message to chat ID %d: %s", chatID, message)
+				trackerInstance.MarkMessageSent(symbolChange.Symbol)
 			}
 		}
 
