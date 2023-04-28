@@ -23,7 +23,7 @@ type SymbolChange struct {
 func main() {
 	botToken := os.Getenv("TELEGRAM_BOT_TOKEN")
 
-	conn, err := grpc.Dial("localhost:50051", grpc.WithInsecure())
+	conn, err := grpc.Dial("binance-server:50051", grpc.WithInsecure())
 	if err != nil {
 		log.Fatalf("Failed to connect to gRPC server: %v", err)
 	}
