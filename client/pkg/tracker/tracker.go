@@ -1,6 +1,7 @@
 package tracker
 
 import (
+	"log"
 	"sync"
 	"time"
 )
@@ -35,12 +36,14 @@ func (t *Tracker) UpdateTrackedSymbol(symbolChange SymbolChange) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 	t.trackedSymbols[symbolChange.Symbol] = symbolChange
+	log.Printf("Added symbol to tracked list: %s", symbolChange.Symbol)
 }
 
 func (t *Tracker) RemoveTrackedSymbol(symbol string) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 	delete(t.trackedSymbols, symbol)
+	log.Printf("Removed symbol from tracked list: %s", symbol)
 }
 
 func (t *Tracker) GetTrackedSymbols() map[string]SymbolChange {
