@@ -209,7 +209,6 @@ func processNotifyTicker(telegramClient *telegram.Client, binanceClient proto.Bi
 		message := fmt.Sprintf("%s %s / USDT P: %s Ch24h: *%.2f%%* \n", emoji, symbolChange.Symbol[:len(symbolChange.Symbol)-4], price, change24h)
 		messageBuilder.WriteString(message)
 
-		// Send information about the new tracked token to the second chat
 		if symbolChange.IsNew {
 			recipient := &tele.User{ID: secondChatID}
 			_, err := telegramClient.SendMessage(recipient, message)
