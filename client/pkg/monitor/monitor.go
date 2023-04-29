@@ -73,7 +73,7 @@ func MonitorPriceChanges(telegramClient *telegram.Client, binanceClient proto.Bi
 		case <-ticker.C:
 			processTicker(telegramClient, binanceClient, chatID, secondChatID, trackerInstance)
 		case <-notifyTicker.C:
-			processNotifyTicker(telegramClient, binanceClient, chatID, trackerInstance)
+			processNotifyTicker(telegramClient, binanceClient, chatID, secondChatID, trackerInstance) // Add secondChatID as an argument
 		}
 	}
 }
@@ -122,7 +122,7 @@ func processTicker(telegramClient *telegram.Client, binanceClient proto.BinanceS
 	for _, symbolChange := range newTrackedSymbols {
 		emoji := "✅"
 		price := strings.TrimRight(strings.TrimRight(symbolChange.PriceChange, "0"), ".")
-		message := fmt.Sprintf("%s / USDT P: %s Ch24h: *%.2f%%* %s\n", symbolChange.Symbol[:len(symbolChange.Symbol)-4], price, symbolChange.PriceChangePct, emoji)
+		message := fmt.Sprintf("%s %s / USDT P: %s Ch24h: *%.2f%%* \n", emoji, symbolChange.Symbol[:len(symbolChange.Symbol)-4], price, symbolChange.PriceChangePct)
 		messageBuilder.WriteString(message)
 	}
 
@@ -160,11 +160,17 @@ func processTicker(telegramClient *telegram.Client, binanceClient proto.BinanceS
 	}
 }
 
-func processNotifyTicker(telegramClient *telegram.Client, binanceClient proto.BinanceServiceClient, chatID int64, trackerInstance *tracker.Tracker) {
+func processNotifyTicker(telegramClient *telegram.Client, binanceClient proto.BinanceServiceClient, chatID int64, secondChatID int64, trackerInstance *tracker.Tracker) {
 	ctx := context.Background()
 	usdtPrices, err := binanceClient.GetUSDTPrices(ctx, &proto.Empty{})
 	if err != nil {
 		log.Printf("Error getting USDT prices: %v", err)
+		return
+	}
+
+	changePercent, err := binanceClient.Get24HChangePercent(ctx, &proto.Empty{})
+	if err != nil {
+		log.Printf("Error getting 24h change percent: %v", err)
 		return
 	}
 
@@ -181,20 +187,37 @@ func processNotifyTicker(telegramClient *telegram.Client, binanceClient proto.Bi
 	var messageBuilder strings.Builder
 	for _, symbolChange := range sortedSymbols {
 		currentPrice := getPriceForSymbol(symbolChange.Symbol, usdtPrices.Prices)
-		newChange := calculateChange(symbolChange.PriceChange, currentPrice)
+
+		var change24h float64
+		for _, changePercentData := range changePercent.ChangePercents {
+			if symbolChange.Symbol == changePercentData.Symbol {
+				change24h = changePercentData.ChangePercent
+				break
+			}
+		}
 
 		price := strings.TrimRight(strings.TrimRight(currentPrice, "0"), ".")
 		emoji := ""
-		if newChange > symbolChange.PriceChangePct {
+		if change24h > symbolChange.PriceChangePct {
 			emoji = "📈"
-		} else if newChange < symbolChange.PriceChangePct {
+		} else if change24h < symbolChange.PriceChangePct {
 			emoji = "📉"
 		} else {
-			emoji = "➖"
+			emoji = "🔹"
 		}
 
-		message := fmt.Sprintf("%s / USDT P: %s Ch24h: *%.2f%%* %s\n", symbolChange.Symbol[:len(symbolChange.Symbol)-4], price, newChange, emoji)
+		message := fmt.Sprintf("%s %s / USDT P: %s Ch24h: *%.2f%%* \n", emoji, symbolChange.Symbol[:len(symbolChange.Symbol)-4], price, change24h)
 		messageBuilder.WriteString(message)
+
+		// Send information about the new tracked token to the second chat
+		if symbolChange.IsNew {
+			recipient := &tele.User{ID: secondChatID}
+			_, err := telegramClient.SendMessage(recipient, message)
+			if err != nil {
+				log.Printf("Error sending message to the second chat: %v\n", err)
+			}
+			symbolChange.IsNew = false
+		}
 	}
 
 	if messageBuilder.Len() > 0 {

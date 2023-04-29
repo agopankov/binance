@@ -1,21 +1,20 @@
 package tracker
 
 import (
-	"log"
 	"sync"
 	"time"
 )
 
 type SymbolChange struct {
-	Symbol            string
-	PriceChange       string
-	PriceChangePct    float64
-	AddedAt           time.Time
-	LastMessageSentAt time.Time
+	Symbol         string
+	PriceChange    string
+	PriceChangePct float64
+	AddedAt        time.Time
+	IsNew          bool
 }
 
 type Tracker struct {
-	mu             sync.RWMutex
+	mu             sync.Mutex
 	trackedSymbols map[string]SymbolChange
 }
 
@@ -25,43 +24,28 @@ func NewTracker() *Tracker {
 	}
 }
 
-func (t *Tracker) IsTracked(symbol string) bool {
-	t.mu.RLock()
-	defer t.mu.RUnlock()
-	_, ok := t.trackedSymbols[symbol]
-	return ok
+func (t *Tracker) GetTrackedSymbols() map[string]SymbolChange {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	return t.trackedSymbols
 }
 
 func (t *Tracker) UpdateTrackedSymbol(symbolChange SymbolChange) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
+	symbolChange.IsNew = true
 	t.trackedSymbols[symbolChange.Symbol] = symbolChange
-	log.Printf("Added symbol to tracked list: %s", symbolChange.Symbol)
 }
 
 func (t *Tracker) RemoveTrackedSymbol(symbol string) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 	delete(t.trackedSymbols, symbol)
-	log.Printf("Removed symbol from tracked list: %s", symbol)
 }
 
-func (t *Tracker) GetTrackedSymbols() map[string]SymbolChange {
-	t.mu.RLock()
-	defer t.mu.RUnlock()
-	copiedSymbols := make(map[string]SymbolChange)
-	for k, v := range t.trackedSymbols {
-		copiedSymbols[k] = v
-	}
-	return copiedSymbols
-}
-
-func (t *Tracker) MarkMessageSent(symbol string) {
+func (t *Tracker) IsTracked(symbol string) bool {
 	t.mu.Lock()
 	defer t.mu.Unlock()
-
-	if trackedSymbol, ok := t.trackedSymbols[symbol]; ok {
-		trackedSymbol.LastMessageSentAt = time.Now()
-		t.trackedSymbols[symbol] = trackedSymbol
-	}
+	_, exists := t.trackedSymbols[symbol]
+	return exists
 }
