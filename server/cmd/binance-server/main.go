@@ -1,21 +1,30 @@
 package main
 
 import (
-	"context"
-	"github.com/agopankov/binance/server/pkg/aws"
+	"encoding/json"
 	"github.com/agopankov/binance/server/pkg/grpcbinance"
 	"github.com/agopankov/binance/server/pkg/grpcbinance/proto"
 	"google.golang.org/grpc"
+	"io/ioutil"
 	"log"
 	"net"
-	"os"
 )
 
+type SecretKeys struct {
+	BinanceAPIKey    string `json:"BINANCE_API_KEY"`
+	BinanceSecretKey string `json:"BINANCE_SECRET_KEY"`
+}
+
 func main() {
-	secretID := os.Getenv("AWS_SECRET_ID")
-	secrets, err := aws.GetSecrets(context.Background(), secretID)
+	secretsFile, err := ioutil.ReadFile("/mnt/secrets-store/prod_binance_secret")
 	if err != nil {
-		log.Fatalf("Failed to get secrets from AWS Secrets Manager: %v", err)
+		log.Fatalf("Failed to read secrets file: %v", err)
+	}
+
+	var secrets SecretKeys
+	err = json.Unmarshal(secretsFile, &secrets)
+	if err != nil {
+		log.Fatalf("Failed to unmarshal secrets JSON: %v", err)
 	}
 
 	apiKey := secrets.BinanceAPIKey

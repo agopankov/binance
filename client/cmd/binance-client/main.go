@@ -1,23 +1,32 @@
 package main
 
 import (
-	"context"
-	"github.com/agopankov/binance/client/pkg/aws"
+	"encoding/json"
 	"github.com/agopankov/binance/client/pkg/monitor"
 	"github.com/agopankov/binance/client/pkg/telegram"
 	"github.com/agopankov/binance/client/pkg/tracker"
 	"github.com/agopankov/binance/server/pkg/grpcbinance/proto"
 	"google.golang.org/grpc"
 	tele "gopkg.in/telebot.v3"
+	"io/ioutil"
 	"log"
-	"os"
 )
 
+type SecretKeys struct {
+	TelegramBotToken       string `json:"TELEGRAM_BOT_TOKEN"`
+	TelegramBotTokenSecond string `json:"TELEGRAM_BOT_TOKEN_SECOND"`
+}
+
 func main() {
-	secretID := os.Getenv("AWS_SECRET_ID")
-	secrets, err := aws.GetSecrets(context.Background(), secretID)
+	secretsFile, err := ioutil.ReadFile("/mnt/secrets-store/prod_binance_secret")
 	if err != nil {
-		log.Fatalf("Failed to get secrets from AWS Secrets Manager: %v", err)
+		log.Fatalf("Failed to read secrets file: %v", err)
+	}
+
+	var secrets SecretKeys
+	err = json.Unmarshal(secretsFile, &secrets)
+	if err != nil {
+		log.Fatalf("Failed to unmarshal secrets JSON: %v", err)
 	}
 
 	firstBotToken := secrets.TelegramBotToken
