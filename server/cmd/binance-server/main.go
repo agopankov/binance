@@ -1,6 +1,7 @@
 package main
 
 import (
+	"github.com/agopankov/binance/server/pkg/aws"
 	"github.com/agopankov/binance/server/pkg/grpcbinance"
 	"github.com/agopankov/binance/server/pkg/grpcbinance/proto"
 	"google.golang.org/grpc"
@@ -10,8 +11,14 @@ import (
 )
 
 func main() {
-	apiKey := os.Getenv("BINANCE_API_KEY")
-	secretKey := os.Getenv("BINANCE_SECRET_KEY")
+	secretID := os.Getenv("AWS_SECRET_ID")
+	secrets, err := aws.GetSecrets(context.Background(), secretID)
+	if err != nil {
+		log.Fatalf("Failed to get secrets from AWS Secrets Manager: %v", err)
+	}
+
+	apiKey := secrets.BinanceAPIKey
+	secretKey := secrets.BinanceSecretKey
 
 	server := grpcbinance.NewBinanceServiceServer(apiKey, secretKey)
 

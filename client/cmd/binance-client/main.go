@@ -1,6 +1,7 @@
 package main
 
 import (
+	"github.com/agopankov/binance/client/pkg/aws"
 	"github.com/agopankov/binance/client/pkg/monitor"
 	"github.com/agopankov/binance/client/pkg/telegram"
 	"github.com/agopankov/binance/client/pkg/tracker"
@@ -12,8 +13,14 @@ import (
 )
 
 func main() {
-	firstBotToken := os.Getenv("TELEGRAM_BOT_TOKEN")
-	secondBotToken := os.Getenv("TELEGRAM_BOT_TOKEN_SECOND")
+	secretID := os.Getenv("AWS_SECRET_ID")
+	secrets, err := aws.GetSecrets(context.Background(), secretID)
+	if err != nil {
+		log.Fatalf("Failed to get secrets from AWS Secrets Manager: %v", err)
+	}
+
+	firstBotToken := secrets.TelegramBotToken
+	secondBotToken := secrets.TelegramBotTokenSecond
 
 	conn, err := grpc.Dial("binance-server:50051", grpc.WithInsecure())
 	if err != nil {

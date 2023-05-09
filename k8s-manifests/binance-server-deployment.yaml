@@ -1,0 +1,44 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: binance-server
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: binance-server
+  template:
+    metadata:
+      labels:
+        app: binance-server
+    spec:
+      serviceAccountName: binance-app-sa
+      containers:
+        - name: binance-server
+          image: 174907374174.dkr.ecr.eu-west-2.amazonaws.com/binance-server:latest
+          ports:
+            - containerPort: 50051
+          volumeMounts:
+            - name: secrets-store-inline
+              mountPath: "/mnt/secrets-store"
+              readOnly: true
+      volumes:
+        - name: secrets-store-inline
+          csi:
+            driver: secrets-store.csi.k8s.io
+            readOnly: true
+            volumeAttributes:
+              secretProviderClass: "aws-secrets-manager"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: binance-server
+spec:
+  selector:
+    app: binance-server
+  ports:
+    - protocol: TCP
+      port: 50051
+      targetPort: 50051
+  type: ClusterIP
