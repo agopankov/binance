@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"github.com/agopankov/binance/server/pkg/aws"
 	"github.com/agopankov/binance/server/pkg/grpcbinance"
 	"github.com/agopankov/binance/server/pkg/grpcbinance/proto"

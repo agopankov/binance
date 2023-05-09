@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"github.com/agopankov/binance/client/pkg/aws"
 	"github.com/agopankov/binance/client/pkg/monitor"
 	"github.com/agopankov/binance/client/pkg/telegram"
