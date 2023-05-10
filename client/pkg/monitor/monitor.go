@@ -9,7 +9,6 @@ import (
 	tele "gopkg.in/telebot.v3"
 	"log"
 	"sort"
-	"strconv"
 	"strings"
 	"time"
 )
@@ -22,16 +21,6 @@ type Monitor struct {
 	TrackerInstance *tracker.Tracker
 }
 
-func NewMonitor(telegramClient *telegram.Client, binanceClient proto.BinanceServiceClient, chatID int64, secondChatID int64, trackerInstance *tracker.Tracker) *Monitor {
-	return &Monitor{
-		TelegramClient:  telegramClient,
-		BinanceClient:   binanceClient,
-		ChatID:          chatID,
-		SecondChatID:    secondChatID,
-		TrackerInstance: trackerInstance,
-	}
-}
-
 func getPriceForSymbol(symbol string, prices []*proto.USDTPrice) string {
 	for _, price := range prices {
 		if price.Symbol == symbol {
@@ -41,27 +30,7 @@ func getPriceForSymbol(symbol string, prices []*proto.USDTPrice) string {
 	return ""
 }
 
-func calculateChange(oldPrice, newPrice string) float64 {
-	oldPriceFloat, err := strconv.ParseFloat(oldPrice, 64)
-	if err != nil {
-		log.Printf("Error parsing price: %v\n", err)
-		return 0
-	}
-
-	newPriceFloat, err := strconv.ParseFloat(newPrice, 64)
-	if err != nil {
-		log.Printf("Error parsing price: %v\n", err)
-		return 0
-	}
-
-	if oldPriceFloat == 0 {
-		return 0
-	}
-
-	return ((newPriceFloat - oldPriceFloat) / oldPriceFloat) * 100
-}
-
-func MonitorPriceChanges(telegramClient *telegram.Client, binanceClient proto.BinanceServiceClient, chatID int64, secondChatID int64, trackerInstance *tracker.Tracker) {
+func PriceChanges(telegramClient *telegram.Client, binanceClient proto.BinanceServiceClient, chatID int64, secondChatID int64, trackerInstance *tracker.Tracker) {
 	ticker := time.NewTicker(5 * time.Second)
 	notifyTicker := time.NewTicker(1 * time.Minute)
 	logTicker := time.NewTicker(2 * time.Second)

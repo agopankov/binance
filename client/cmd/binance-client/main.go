@@ -7,9 +7,10 @@ import (
 	"github.com/agopankov/binance/client/pkg/tracker"
 	"github.com/agopankov/binance/server/pkg/grpcbinance/proto"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 	tele "gopkg.in/telebot.v3"
-	"io/ioutil"
 	"log"
+	"os"
 )
 
 type SecretKeys struct {
@@ -18,25 +19,33 @@ type SecretKeys struct {
 }
 
 func main() {
-	secretsFile, err := ioutil.ReadFile("/mnt/secrets-store/prod_binance_secret")
-	if err != nil {
-		log.Fatalf("Failed to read secrets file: %v", err)
-	}
-
 	var secrets SecretKeys
-	err = json.Unmarshal(secretsFile, &secrets)
-	if err != nil {
-		log.Fatalf("Failed to unmarshal secrets JSON: %v", err)
+
+	firstBotToken := os.Getenv("TELEGRAM_BOT_TOKEN")
+	secondBotToken := os.Getenv("TELEGRAM_BOT_TOKEN_SECOND")
+
+	if firstBotToken == "" || secondBotToken == "" {
+		secretsFile, err := os.ReadFile("/mnt/secrets-store/prod_binance_secret")
+		if err != nil {
+			log.Fatalf("Failed to read secrets file: %v", err)
+		}
+		err = json.Unmarshal(secretsFile, &secrets)
+		if err != nil {
+			log.Fatalf("Failed to unmarshal secrets JSON: %v", err)
+		}
+		firstBotToken = secrets.TelegramBotToken
+		secondBotToken = secrets.TelegramBotTokenSecond
 	}
 
-	firstBotToken := secrets.TelegramBotToken
-	secondBotToken := secrets.TelegramBotTokenSecond
-
-	conn, err := grpc.Dial("binance-server:50051", grpc.WithInsecure())
+	conn, err := grpc.Dial("binance-server:50051", grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		log.Fatalf("Failed to connect to gRPC server: %v", err)
 	}
-	defer conn.Close()
+	defer func() {
+		if err := conn.Close(); err != nil {
+			log.Printf("Failed to close connection: %v", err)
+		}
+	}()
 
 	binanceClient := proto.NewBinanceServiceClient(conn)
 
@@ -51,14 +60,14 @@ func main() {
 	}
 
 	secondUser := secondTelegramClient.Bot().Me
-	secondChatID := int64(secondUser.ID)
+	secondChatID := secondUser.ID
 
 	telegramClient.HandleCommand("start", func(m *tele.Message) {
 		log.Printf("Received /start command from chat ID %d", m.Sender.ID)
 
-		chatID := int64(m.Sender.ID)
+		chatID := m.Sender.ID
 		trackerInstance := tracker.NewTracker()
-		go monitor.MonitorPriceChanges(telegramClient, binanceClient, chatID, secondChatID, trackerInstance)
+		go monitor.PriceChanges(telegramClient, binanceClient, chatID, secondChatID, trackerInstance)
 
 		recipient := &tele.User{ID: chatID}
 		if _, err := telegramClient.SendMessage(recipient, "Hi"); err != nil {
@@ -71,7 +80,7 @@ func main() {
 	secondTelegramClient.HandleCommand("start", func(m *tele.Message) {
 		log.Printf("Received /start command from second chat ID %d", m.Sender.ID)
 
-		chatID := int64(m.Sender.ID)
+		chatID := m.Sender.ID
 		recipient := &tele.User{ID: chatID}
 		if _, err := secondTelegramClient.SendMessage(recipient, "Hi"); err != nil {
 			log.Printf("Error sending message to second chat: %v", err)

@@ -5,9 +5,9 @@ import (
 	"github.com/agopankov/binance/server/pkg/grpcbinance"
 	"github.com/agopankov/binance/server/pkg/grpcbinance/proto"
 	"google.golang.org/grpc"
-	"io/ioutil"
 	"log"
 	"net"
+	"os"
 )
 
 type SecretKeys struct {
@@ -16,19 +16,23 @@ type SecretKeys struct {
 }
 
 func main() {
-	secretsFile, err := ioutil.ReadFile("/mnt/secrets-store/prod_binance_secret")
-	if err != nil {
-		log.Fatalf("Failed to read secrets file: %v", err)
-	}
-
 	var secrets SecretKeys
-	err = json.Unmarshal(secretsFile, &secrets)
-	if err != nil {
-		log.Fatalf("Failed to unmarshal secrets JSON: %v", err)
-	}
 
-	apiKey := secrets.BinanceAPIKey
-	secretKey := secrets.BinanceSecretKey
+	apiKey := os.Getenv("BINANCE_API_KEY")
+	secretKey := os.Getenv("BINANCE_SECRET_KEY")
+
+	if apiKey == "" || secretKey == "" {
+		secretsFile, err := os.ReadFile("/mnt/secrets-store/prod_binance_secret")
+		if err != nil {
+			log.Fatalf("Failed to read secrets file: %v", err)
+		}
+		err = json.Unmarshal(secretsFile, &secrets)
+		if err != nil {
+			log.Fatalf("Failed to unmarshal secrets JSON: %v", err)
+		}
+		apiKey = secrets.BinanceAPIKey
+		secretKey = secrets.BinanceSecretKey
+	}
 
 	server := grpcbinance.NewBinanceServiceServer(apiKey, secretKey)
 
