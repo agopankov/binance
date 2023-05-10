@@ -62,7 +62,7 @@ func main() {
 	secondUser := secondTelegramClient.Bot().Me
 	secondChatID := secondUser.ID
 
-	telegramClient.HandleCommand("start", func(m *tele.Message) {
+	telegramClient.HandleCommand("/start", func(m *tele.Message) {
 		log.Printf("Received /start command from chat ID %d", m.Sender.ID)
 
 		chatID := m.Sender.ID
@@ -77,7 +77,7 @@ func main() {
 		}
 	})
 
-	secondTelegramClient.HandleCommand("start", func(m *tele.Message) {
+	secondTelegramClient.HandleCommand("/start", func(m *tele.Message) {
 		log.Printf("Received /start command from second chat ID %d", m.Sender.ID)
 
 		chatID := m.Sender.ID
