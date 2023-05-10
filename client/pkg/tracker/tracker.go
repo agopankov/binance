@@ -27,7 +27,11 @@ func NewTracker() *Tracker {
 func (t *Tracker) GetTrackedSymbols() map[string]SymbolChange {
 	t.mu.Lock()
 	defer t.mu.Unlock()
-	return t.trackedSymbols
+	copiedSymbols := make(map[string]SymbolChange)
+	for k, v := range t.trackedSymbols {
+		copiedSymbols[k] = v
+	}
+	return copiedSymbols
 }
 
 func (t *Tracker) UpdateTrackedSymbol(symbolChange SymbolChange) {

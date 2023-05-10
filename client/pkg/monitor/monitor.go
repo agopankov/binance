@@ -31,19 +31,21 @@ func getPriceForSymbol(symbol string, prices []*proto.USDTPrice) string {
 	return ""
 }
 
-func PriceChanges(telegramClient *telegram.Client, binanceClient proto.BinanceServiceClient, chatID int64, secondChatID int64, trackerInstance *tracker.Tracker) {
+func PriceChanges(ctx context.Context, client *telegram.Client, binanceClient proto.BinanceServiceClient, chatID int64, secondChatID int64, trackerInstance *tracker.Tracker) {
 	ticker := time.NewTicker(5 * time.Second)
 	notifyTicker := time.NewTicker(1 * time.Minute)
 	logTicker := time.NewTicker(2 * time.Second)
 
 	for {
 		select {
+		case <-ctx.Done():
+			return
 		case <-logTicker.C:
 			processLogTicker(trackerInstance)
 		case <-ticker.C:
-			processTicker(telegramClient, binanceClient, chatID, secondChatID, trackerInstance)
+			processTicker(client, binanceClient, chatID, secondChatID, trackerInstance)
 		case <-notifyTicker.C:
-			processNotifyTicker(telegramClient, binanceClient, chatID, secondChatID, trackerInstance) // Add secondChatID as an argument
+			processNotifyTicker(client, binanceClient, chatID, secondChatID, trackerInstance) // Add secondChatID as an argument
 		}
 	}
 }

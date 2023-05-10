@@ -1,7 +1,9 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
+	"github.com/agopankov/binance/client/pkg/cancelfuncs"
 	"github.com/agopankov/binance/client/pkg/monitor"
 	"github.com/agopankov/binance/client/pkg/telegram"
 	"github.com/agopankov/binance/client/pkg/tracker"
@@ -62,12 +64,18 @@ func main() {
 	secondUser := secondTelegramClient.Bot().Me
 	secondChatID := secondUser.ID
 
+	cancelFuncs := cancelfuncs.NewCancelFuncs()
+
 	telegramClient.HandleCommand("/start", func(m *tele.Message) {
 		log.Printf("Received /start command from chat ID %d", m.Sender.ID)
 
 		chatID := m.Sender.ID
 		trackerInstance := tracker.NewTracker()
-		go monitor.PriceChanges(telegramClient, binanceClient, chatID, secondChatID, trackerInstance)
+
+		ctx, cancel := context.WithCancel(context.Background())
+		cancelFuncs.Add(chatID, cancel)
+
+		go monitor.PriceChanges(ctx, telegramClient, binanceClient, chatID, secondChatID, trackerInstance)
 
 		recipient := &tele.User{ID: chatID}
 		if _, err := telegramClient.SendMessage(recipient, "Hi"); err != nil {
@@ -75,6 +83,14 @@ func main() {
 		} else {
 			log.Printf("Sent message to chat ID %d: %s", chatID, "Hi")
 		}
+	})
+
+	telegramClient.HandleCommand("/stop", func(m *tele.Message) {
+		log.Printf("Received /stop command from chat ID %d", m.Sender.ID)
+
+		chatID := m.Sender.ID
+
+		cancelFuncs.Remove(chatID)
 	})
 
 	secondTelegramClient.HandleCommand("/start", func(m *tele.Message) {
