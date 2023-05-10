@@ -9,6 +9,7 @@ import (
 	tele "gopkg.in/telebot.v3"
 	"log"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -91,7 +92,7 @@ func processTicker(telegramClient *telegram.Client, binanceClient proto.BinanceS
 	for _, symbolChange := range newTrackedSymbols {
 		emoji := "✅"
 		price := strings.TrimRight(strings.TrimRight(symbolChange.PriceChange, "0"), ".")
-		message := fmt.Sprintf("%s %s / USDT P: %s Ch24h: *%.2f%%* \n", emoji, symbolChange.Symbol[:len(symbolChange.Symbol)-4], price, symbolChange.PriceChangePct)
+		message := fmt.Sprintf("%s %s / USDT P: %s Ch24h: %.2f%% \n", emoji, symbolChange.Symbol[:len(symbolChange.Symbol)-4], price, symbolChange.PriceChangePct)
 		messageBuilder.WriteString(message)
 	}
 
@@ -167,15 +168,17 @@ func processNotifyTicker(telegramClient *telegram.Client, binanceClient proto.Bi
 
 		price := strings.TrimRight(strings.TrimRight(currentPrice, "0"), ".")
 		emoji := ""
-		if change24h > symbolChange.PriceChangePct {
+		currentPriceFloat, _ := strconv.ParseFloat(currentPrice, 64)
+		previousPriceFloat, _ := strconv.ParseFloat(symbolChange.PriceChange, 64)
+		if currentPriceFloat > previousPriceFloat {
 			emoji = "📈"
-		} else if change24h < symbolChange.PriceChangePct {
+		} else if currentPriceFloat < previousPriceFloat {
 			emoji = "📉"
 		} else {
 			emoji = "🔹"
 		}
 
-		message := fmt.Sprintf("%s %s / USDT P: %s Ch24h: *%.2f%%* \n", emoji, symbolChange.Symbol[:len(symbolChange.Symbol)-4], price, change24h)
+		message := fmt.Sprintf("%s %s / USDT P: %s Ch24h: %.2f%% \n", emoji, symbolChange.Symbol[:len(symbolChange.Symbol)-4], price, change24h)
 		messageBuilder.WriteString(message)
 
 		if symbolChange.IsNew {
@@ -186,6 +189,9 @@ func processNotifyTicker(telegramClient *telegram.Client, binanceClient proto.Bi
 			}
 			symbolChange.IsNew = false
 		}
+
+		symbolChange.PriceChange = currentPrice
+		trackerInstance.UpdateTrackedSymbol(symbolChange)
 	}
 
 	if messageBuilder.Len() > 0 {
