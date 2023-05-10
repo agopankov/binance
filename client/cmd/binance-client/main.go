@@ -22,6 +22,7 @@ type SecretKeys struct {
 
 func main() {
 	var secrets SecretKeys
+	var secondChatID int64
 
 	firstBotToken := os.Getenv("TELEGRAM_BOT_TOKEN")
 	secondBotToken := os.Getenv("TELEGRAM_BOT_TOKEN_SECOND")
@@ -61,10 +62,19 @@ func main() {
 		log.Fatalf("Error creating second Telegram bot: %v", err)
 	}
 
-	secondUser := secondTelegramClient.Bot().Me
-	secondChatID := secondUser.ID
-
 	cancelFuncs := cancelfuncs.NewCancelFuncs()
+
+	secondTelegramClient.HandleCommand("/start", func(m *tele.Message) {
+		log.Printf("Received /start command from second chat ID %d", m.Sender.ID)
+
+		secondChatID = m.Sender.ID
+		recipient := &tele.User{ID: secondChatID}
+		if _, err := secondTelegramClient.SendMessage(recipient, "Hi"); err != nil {
+			log.Printf("Error sending message to second chat: %v", err)
+		} else {
+			log.Printf("Sent message to second chat ID %d: %s", secondChatID, "Hi")
+		}
+	})
 
 	telegramClient.HandleCommand("/start", func(m *tele.Message) {
 		log.Printf("Received /start command from chat ID %d", m.Sender.ID)
@@ -75,7 +85,7 @@ func main() {
 		ctx, cancel := context.WithCancel(context.Background())
 		cancelFuncs.Add(chatID, cancel)
 
-		go monitor.PriceChanges(ctx, telegramClient, binanceClient, chatID, secondChatID, trackerInstance)
+		go monitor.PriceChanges(ctx, telegramClient, secondTelegramClient, binanceClient, chatID, secondChatID, trackerInstance)
 
 		recipient := &tele.User{ID: chatID}
 		if _, err := telegramClient.SendMessage(recipient, "Hi"); err != nil {
@@ -91,18 +101,6 @@ func main() {
 		chatID := m.Sender.ID
 
 		cancelFuncs.Remove(chatID)
-	})
-
-	secondTelegramClient.HandleCommand("/start", func(m *tele.Message) {
-		log.Printf("Received /start command from second chat ID %d", m.Sender.ID)
-
-		chatID := m.Sender.ID
-		recipient := &tele.User{ID: chatID}
-		if _, err := secondTelegramClient.SendMessage(recipient, "Hi"); err != nil {
-			log.Printf("Error sending message to second chat: %v", err)
-		} else {
-			log.Printf("Sent message to second chat ID %d: %s", chatID, "Hi")
-		}
 	})
 
 	go secondTelegramClient.Start()
