@@ -6,11 +6,13 @@ import (
 )
 
 type SymbolChange struct {
-	Symbol         string
-	PriceChange    string
-	PriceChangePct float64
-	AddedAt        time.Time
-	IsNew          bool
+	Symbol             string
+	PriceChange        string
+	FirstPriceChange   string
+	PriceChangePct     float64
+	AddedAt            time.Time
+	IsNew              bool
+	NotificationOfPump bool
 }
 
 type Tracker struct {

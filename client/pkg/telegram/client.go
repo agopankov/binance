@@ -54,3 +54,10 @@ func (c *Client) HandleCommand(command string, handler func(m *tele.Message)) {
 		return nil
 	})
 }
+
+func (c *Client) HandleOnMessage(fn func(m *tele.Message)) {
+	c.bot.Handle(tele.OnText, func(c tele.Context) error {
+		fn(c.Message())
+		return nil
+	})
+}

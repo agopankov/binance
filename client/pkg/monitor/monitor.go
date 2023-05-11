@@ -32,7 +32,7 @@ func getPriceForSymbol(symbol string, prices []*proto.USDTPrice) string {
 	return ""
 }
 
-func PriceChanges(ctx context.Context, client *telegram.Client, secondTelegramClient *telegram.Client, binanceClient proto.BinanceServiceClient, chatID int64, secondChatID int64, trackerInstance *tracker.Tracker) {
+func PriceChanges(ctx context.Context, client *telegram.Client, secondTelegramClient *telegram.Client, binanceClient proto.BinanceServiceClient, chatState *telegram.ChatState, trackerInstance *tracker.Tracker, changePercent24 *telegram.ChangePercent24, pumpSettings *telegram.PumpSettings) {
 	ticker := time.NewTicker(5 * time.Second)
 	notifyTicker := time.NewTicker(1 * time.Minute)
 	logTicker := time.NewTicker(2 * time.Second)
@@ -44,14 +44,17 @@ func PriceChanges(ctx context.Context, client *telegram.Client, secondTelegramCl
 		case <-logTicker.C:
 			processLogTicker(trackerInstance)
 		case <-ticker.C:
-			processTicker(client, binanceClient, chatID, trackerInstance)
+			processTicker(client, secondTelegramClient, binanceClient, chatState, trackerInstance, changePercent24, pumpSettings)
 		case <-notifyTicker.C:
-			processNotifyTicker(client, secondTelegramClient, binanceClient, chatID, secondChatID, trackerInstance)
+			processNotifyTicker(client, binanceClient, chatState, trackerInstance)
 		}
 	}
 }
 
-func processTicker(telegramClient *telegram.Client, binanceClient proto.BinanceServiceClient, chatID int64, trackerInstance *tracker.Tracker) {
+func processTicker(telegramClient *telegram.Client, secondTelegramClient *telegram.Client, binanceClient proto.BinanceServiceClient, chatState *telegram.ChatState, trackerInstance *tracker.Tracker, changePercent24 *telegram.ChangePercent24, pumpSettings *telegram.PumpSettings) {
+	chatID := chatState.GetFirstChatID()
+	secondChatID := chatState.GetSecondChatID()
+
 	ctx := context.Background()
 	usdtPrices, err := binanceClient.GetUSDTPrices(ctx, &proto.Empty{})
 	if err != nil {
@@ -75,12 +78,13 @@ func processTicker(telegramClient *telegram.Client, binanceClient proto.BinanceS
 			}
 		}
 
-		if change >= 20 && !trackerInstance.IsTracked(price.Symbol) {
+		if change >= changePercent24.GetPercent() && !trackerInstance.IsTracked(price.Symbol) {
 			newSymbol := tracker.SymbolChange{
-				Symbol:         price.Symbol,
-				PriceChange:    fmt.Sprintf("%.8f", price.Price),
-				PriceChangePct: change,
-				AddedAt:        time.Now(),
+				Symbol:           price.Symbol,
+				PriceChange:      fmt.Sprintf("%.8f", price.Price),
+				FirstPriceChange: fmt.Sprintf("%.8f", price.Price),
+				PriceChangePct:   change,
+				AddedAt:          time.Now(),
 			}
 			trackerInstance.UpdateTrackedSymbol(newSymbol)
 			newTrackedSymbols = append(newTrackedSymbols, newSymbol)
@@ -117,14 +121,61 @@ func processTicker(telegramClient *telegram.Client, binanceClient proto.BinanceS
 			}
 		}
 
-		if change24h <= 20 {
+		if change24h <= changePercent24.GetPercent() {
 			trackerInstance.RemoveTrackedSymbol(symbol)
 			continue
 		}
 	}
+
+	trackedSymbols := trackerInstance.GetTrackedSymbols()
+
+	var sortedSymbols []tracker.SymbolChange
+	for _, symbolChange := range trackedSymbols {
+		sortedSymbols = append(sortedSymbols, symbolChange)
+	}
+
+	for _, symbolChange := range sortedSymbols {
+		currentPrice := getPriceForSymbol(symbolChange.Symbol, usdtPrices.Prices)
+
+		currentPriceFloat, _ := strconv.ParseFloat(currentPrice, 64)
+		previousPriceFloat, _ := strconv.ParseFloat(symbolChange.FirstPriceChange, 64)
+
+		if !symbolChange.NotificationOfPump && time.Since(symbolChange.AddedAt) <= pumpSettings.GetWaitTime() && (currentPriceFloat/previousPriceFloat)-1 >= pumpSettings.GetPumpPercent() {
+			log.Printf("Pump %s, current pump persent %.5f%%, firstPrice: %.7f, currentPrice: %.7f, notification: %t",
+				symbolChange.Symbol[:len(symbolChange.Symbol)-4],
+				((currentPriceFloat/previousPriceFloat)-1)*100,
+				previousPriceFloat,
+				currentPriceFloat,
+				symbolChange.NotificationOfPump)
+			message := fmt.Sprintf("🚀 %s / USDT P: %.7f Ch24h: %.2f%% (PrP: %.7f) \n",
+				symbolChange.Symbol[:len(symbolChange.Symbol)-4],
+				currentPriceFloat,
+				symbolChange.PriceChangePct,
+				previousPriceFloat,
+			)
+			messageBuilder.WriteString(message)
+
+			recipient := &tele.User{ID: secondChatID}
+			_, err := secondTelegramClient.SendMessage(recipient, message)
+			if err != nil {
+				log.Printf("Error sending message to the second chat: %v\n", err)
+			} else {
+				symbolChange.NotificationOfPump = true
+				trackerInstance.UpdateTrackedSymbol(symbolChange)
+			}
+		} else {
+			log.Printf("Don't pump %s, current pump persent %.5f%%, notification: %t",
+				symbolChange.Symbol[:len(symbolChange.Symbol)-4],
+				((currentPriceFloat/previousPriceFloat)-1)*100,
+				symbolChange.NotificationOfPump)
+		}
+	}
+
 }
 
-func processNotifyTicker(telegramClient *telegram.Client, secondTelegramClient *telegram.Client, binanceClient proto.BinanceServiceClient, chatID int64, secondChatID int64, trackerInstance *tracker.Tracker) {
+func processNotifyTicker(telegramClient *telegram.Client, binanceClient proto.BinanceServiceClient, chatState *telegram.ChatState, trackerInstance *tracker.Tracker) {
+	chatID := chatState.GetFirstChatID()
+
 	ctx := context.Background()
 	usdtPrices, err := binanceClient.GetUSDTPrices(ctx, &proto.Empty{})
 	if err != nil {
@@ -175,15 +226,6 @@ func processNotifyTicker(telegramClient *telegram.Client, secondTelegramClient *
 		message := fmt.Sprintf("%s %s / USDT P: %s Ch24h: %.2f%% \n", emoji, symbolChange.Symbol[:len(symbolChange.Symbol)-4], price, change24h)
 		messageBuilder.WriteString(message)
 
-		//if symbolChange.IsNew {
-		//	recipient := &tele.User{ID: secondChatID}
-		//	_, err := secondTelegramClient.SendMessage(recipient, message)
-		//	if err != nil {
-		//		log.Printf("Error sending message to the second chat: %v\n", err)
-		//	}
-		//	symbolChange.IsNew = false
-		//}
-
 		symbolChange.PriceChange = currentPrice
 		trackerInstance.UpdateTrackedSymbol(symbolChange)
 	}
@@ -195,32 +237,6 @@ func processNotifyTicker(telegramClient *telegram.Client, secondTelegramClient *
 		if err != nil {
 			log.Printf("Error sending message: %v\n", err)
 		}
-	}
-
-	for _, symbolChange := range sortedSymbols {
-		currentPrice := getPriceForSymbol(symbolChange.Symbol, usdtPrices.Prices)
-
-		currentPriceFloat, _ := strconv.ParseFloat(currentPrice, 64)
-		previousPriceFloat, _ := strconv.ParseFloat(symbolChange.PriceChange, 64)
-
-		if !symbolChange.IsNew && time.Since(symbolChange.AddedAt) <= 15*time.Minute && (currentPriceFloat/previousPriceFloat)-1 >= 0.05 {
-			message := fmt.Sprintf("🚀 %s / USDT P: %.3f Ch24h: %.2f%% (PrP: %.3f) \n",
-				symbolChange.Symbol[:len(symbolChange.Symbol)-4],
-				currentPriceFloat,
-				symbolChange.PriceChangePct,
-				previousPriceFloat,
-			)
-			messageBuilder.WriteString(message)
-
-			recipient := &tele.User{ID: secondChatID}
-			_, err := secondTelegramClient.SendMessage(recipient, message)
-			if err != nil {
-				log.Printf("Error sending message to the second chat: %v\n", err)
-			}
-		}
-
-		symbolChange.PriceChange = currentPrice
-		trackerInstance.UpdateTrackedSymbol(symbolChange)
 	}
 
 }
