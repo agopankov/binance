@@ -112,7 +112,7 @@ func processTicker(telegramClient *telegram.Client, secondTelegramClient *telegr
 		}
 	}
 
-	for symbol, _ := range trackerInstance.GetTrackedSymbols() {
+	for symbol := range trackerInstance.GetTrackedSymbols() {
 		change24h := 0.0
 		for _, changePercent := range changePercent.ChangePercents {
 			if symbol == changePercent.Symbol {
