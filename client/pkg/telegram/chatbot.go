@@ -10,6 +10,7 @@ type State int
 const (
 	StateNone State = iota
 	StateAwaitingPercent
+	StateAwaitingWaitTime
 )
 
 type ChatState struct {

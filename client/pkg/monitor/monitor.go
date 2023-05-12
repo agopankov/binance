@@ -140,7 +140,7 @@ func processTicker(telegramClient *telegram.Client, secondTelegramClient *telegr
 		currentPriceFloat, _ := strconv.ParseFloat(currentPrice, 64)
 		previousPriceFloat, _ := strconv.ParseFloat(symbolChange.FirstPriceChange, 64)
 
-		if !symbolChange.NotificationOfPump && time.Since(symbolChange.AddedAt) <= pumpSettings.GetWaitTime() && (currentPriceFloat/previousPriceFloat)-1 >= pumpSettings.GetPumpPercent() {
+		if !symbolChange.NotificationOfPump && time.Since(symbolChange.AddedAt) <= pumpSettings.GetWaitTime() && (currentPriceFloat/previousPriceFloat)-1 >= pumpSettings.GetPumpPercent()/100 {
 			log.Printf("Pump %s, current pump persent %.5f%%, firstPrice: %.7f, currentPrice: %.7f, notification: %t",
 				symbolChange.Symbol[:len(symbolChange.Symbol)-4],
 				((currentPriceFloat/previousPriceFloat)-1)*100,
