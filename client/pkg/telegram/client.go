@@ -13,7 +13,7 @@ type Client struct {
 	binanceClient proto.BinanceServiceClient
 }
 
-func NewClient(botToken string, binanceClient proto.BinanceServiceClient) (*Client, error) {
+func NewClient(botToken string) (*Client, error) {
 	bot, err := tele.NewBot(tele.Settings{
 		Token:  botToken,
 		Poller: &tele.LongPoller{Timeout: 10 * time.Second},
@@ -23,9 +23,8 @@ func NewClient(botToken string, binanceClient proto.BinanceServiceClient) (*Clie
 	}
 
 	return &Client{
-		botToken:      botToken,
-		bot:           bot,
-		binanceClient: binanceClient,
+		botToken: botToken,
+		bot:      bot,
 	}, nil
 }
 
