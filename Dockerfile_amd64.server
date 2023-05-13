@@ -1,12 +1,16 @@
 # Dockerfile.server
 
-FROM --platform=linux/amd64 golang:1.20.3-alpine
+FROM --platform=linux/amd64 golang:1.20.3-alpine3.17 AS build
 WORKDIR /app
 
 COPY go.mod go.sum ./
 RUN go mod download
 COPY . .
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o binance-server ./server/cmd/binance-server && \
+    rm -rf /var/cache/apk/* && \
+    rm -rf /tmp/*
 
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o binance-server ./server/cmd/binance-server
+FROM --platform=linux/amd64 alpine:3.17
+COPY --from=build /app/binance-server /bin/binance-server
 
-CMD ["./binance-server"]
+CMD ["binance-server"]
