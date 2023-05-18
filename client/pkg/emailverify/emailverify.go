@@ -21,7 +21,7 @@ type Verification struct {
 }
 
 func GenerateVerificationCode(length int) string {
-	rand.Seed(time.Now().UnixNano())
+	rand.New(rand.NewSource(time.Now().UnixNano()))
 	b := make([]byte, length)
 	for i := range b {
 		b[i] = CharSet[rand.Intn(len(CharSet))]
