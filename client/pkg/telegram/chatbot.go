@@ -9,6 +9,8 @@ type State int
 
 const (
 	StateNone State = iota
+	StateAwaitingEmail
+	StateAwaitingVerification
 	StateAwaitingPercent
 	StateAwaitingWaitTime
 )
@@ -16,6 +18,7 @@ const (
 type ChatState struct {
 	FirstChatID  int64
 	SecondChatID int64
+	Email        string
 	State        State
 	mu           sync.Mutex
 }
@@ -29,6 +32,18 @@ type PumpSettings struct {
 	mux         sync.Mutex
 	waitTime    time.Duration
 	pumpPercent float64
+}
+
+func (cs *ChatState) SetEmail(email string) {
+	cs.mu.Lock()
+	defer cs.mu.Unlock()
+	cs.Email = email
+}
+
+func (cs *ChatState) GetEmail() string {
+	cs.mu.Lock()
+	defer cs.mu.Unlock()
+	return cs.Email
 }
 
 func (cs *ChatState) SetFirstChatID(id int64) {

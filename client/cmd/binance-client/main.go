@@ -57,7 +57,7 @@ func main() {
 
 	telegramClient.HandleCommand("/start", func(m *tele.Message) {
 		chatState.SetFirstChatID(m.Sender.ID)
-		botcommands.StartCommandHandlerFirstClient(m, telegramClient, secondTelegramClient, cancelFuncs, chatState, binanceClient, changePercent24, pumpSettings)
+		botcommands.StartCommandHandlerFirstClient(m, telegramClient, chatState)
 	})
 	telegramClient.HandleCommand("/stop", func(m *tele.Message) {
 		botcommands.StopCommandHandler(m, cancelFuncs)
@@ -78,7 +78,7 @@ func main() {
 	})
 
 	telegramClient.HandleOnMessage(func(m *tele.Message) {
-		botcommands.MessageHandlerFirstClient(m, telegramClient, chatState, changePercent24)
+		botcommands.MessageHandlerFirstClient(m, telegramClient, secondTelegramClient, cancelFuncs, chatState, binanceClient, changePercent24, pumpSettings)
 	})
 
 	secondTelegramClient.HandleOnMessage(func(m *tele.Message) {
