@@ -6,6 +6,7 @@ import (
 	"github.com/agopankov/binance/client/pkg/grpc"
 	"github.com/agopankov/binance/client/pkg/secrets"
 	"github.com/agopankov/binance/client/pkg/telegram"
+	"github.com/agopankov/binance/client/pkg/user"
 	"github.com/agopankov/binance/server/pkg/grpcbinance/proto"
 	tele "gopkg.in/telebot.v3"
 	"log"
@@ -14,12 +15,13 @@ import (
 
 func main() {
 
-	changePercent24 := &telegram.ChangePercent24{}
-	changePercent24.SetPercent(20)
+	userManager := user.NewUserManager()
 
-	pumpSettings := &telegram.PumpSettings{}
-	pumpSettings.SetPumpPercent(5)
-	pumpSettings.SetWaitTime(15 * time.Minute)
+	usr := user.NewUser()
+	usr.ChangePercent24.SetPercent(20)
+
+	usr.PumpSettings.SetPumpPercent(5)
+	usr.PumpSettings.SetWaitTime(15 * time.Minute)
 
 	secretsForTelegramBots, err := secrets.LoadSecrets()
 	if err != nil {
@@ -41,8 +43,6 @@ func main() {
 
 	binanceClient := proto.NewBinanceServiceClient(conn)
 
-	chatState := &telegram.ChatState{}
-
 	telegramClient, err := telegram.NewClient(firstBotToken)
 	if err != nil {
 		log.Fatalf("Error creating Telegram bot: %v", err)
@@ -56,33 +56,81 @@ func main() {
 	cancelFuncs := cancelfuncs.NewCancelFuncs()
 
 	telegramClient.HandleCommand("/start", func(m *tele.Message) {
-		chatState.SetFirstChatID(m.Sender.ID)
-		botcommands.StartCommandHandlerFirstClient(m, telegramClient, chatState)
+		usr, ok := userManager.GetUser(m.Sender.ID)
+		if !ok {
+			usr = user.NewUser()
+			usr.ChangePercent24.SetPercent(20)
+			usr.PumpSettings.SetPumpPercent(5)
+			usr.PumpSettings.SetWaitTime(15 * time.Minute)
+			userManager.AddUser(m.Sender.ID, usr)
+		}
+
+		usr.FirstChatID = m.Sender.ID
+		botcommands.StartCommandHandlerFirstClient(m, telegramClient, usr)
 	})
 	telegramClient.HandleCommand("/stop", func(m *tele.Message) {
 		botcommands.StopCommandHandler(m, cancelFuncs)
 	})
 	telegramClient.HandleCommand("/change24percent", func(m *tele.Message) {
-		botcommands.Change24PercentCommandHandler(m, telegramClient, chatState, changePercent24)
+		usr, ok := userManager.GetUser(m.Sender.ID)
+		if !ok {
+			log.Printf("Unknown user with ID %d", m.Sender.ID)
+			return
+		}
+
+		botcommands.Change24PercentCommandHandler(m, telegramClient, usr)
 	})
 
 	secondTelegramClient.HandleCommand("/start", func(m *tele.Message) {
-		chatState.SetSecondChatID(m.Sender.ID)
-		botcommands.StartCommandHandlerSecondClient(m, secondTelegramClient, chatState)
+		usr, ok := userManager.GetUser(m.Sender.ID)
+		if !ok {
+			usr = user.NewUser()
+			usr.ChangePercent24.SetPercent(20)
+			usr.PumpSettings.SetPumpPercent(5)
+			usr.PumpSettings.SetWaitTime(15 * time.Minute)
+			userManager.AddUser(m.Sender.ID, usr)
+		}
+
+		usr.SecondChatID = m.Sender.ID
+		botcommands.StartCommandHandlerSecondClient(m, secondTelegramClient, usr)
 	})
 	secondTelegramClient.HandleCommand("/setwaittime", func(m *tele.Message) {
-		botcommands.SetWaitTimeCommandHandler(m, secondTelegramClient, chatState, pumpSettings)
+		usr, ok := userManager.GetUser(m.Sender.ID)
+		if !ok {
+			log.Printf("Unknown user with ID %d", m.Sender.ID)
+			return
+		}
+
+		botcommands.SetWaitTimeCommandHandler(m, secondTelegramClient, usr)
 	})
 	secondTelegramClient.HandleCommand("/setpumppercent", func(m *tele.Message) {
-		botcommands.SetPumpPercentCommandHandler(m, secondTelegramClient, chatState, pumpSettings)
+		usr, ok := userManager.GetUser(m.Sender.ID)
+		if !ok {
+			log.Printf("Unknown user with ID %d", m.Sender.ID)
+			return
+		}
+
+		botcommands.SetPumpPercentCommandHandler(m, secondTelegramClient, usr)
 	})
 
 	telegramClient.HandleOnMessage(func(m *tele.Message) {
-		botcommands.MessageHandlerFirstClient(m, telegramClient, secondTelegramClient, cancelFuncs, chatState, binanceClient, changePercent24, pumpSettings)
+		usr, ok := userManager.GetUser(m.Sender.ID)
+		if !ok {
+			log.Printf("Unknown user with ID %d", m.Sender.ID)
+			return
+		}
+
+		botcommands.MessageHandlerFirstClient(m, telegramClient, secondTelegramClient, cancelFuncs, usr, binanceClient)
 	})
 
 	secondTelegramClient.HandleOnMessage(func(m *tele.Message) {
-		botcommands.MessageHandlerSecondClient(m, secondTelegramClient, chatState, pumpSettings)
+		usr, ok := userManager.GetUser(m.Sender.ID)
+		if !ok {
+			log.Printf("Unknown user with ID %d", m.Sender.ID)
+			return
+		}
+
+		botcommands.MessageHandlerSecondClient(m, secondTelegramClient, usr)
 	})
 
 	go secondTelegramClient.Start()

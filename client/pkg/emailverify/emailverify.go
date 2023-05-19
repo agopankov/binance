@@ -16,8 +16,11 @@ const (
 )
 
 type Verification struct {
-	Email string
-	Code  string
+	Email        string
+	Code         string
+	FirstBotID   int64
+	SecondBotID  int64
+	LastVerified time.Time
 }
 
 func GenerateVerificationCode(length int) string {
@@ -29,15 +32,17 @@ func GenerateVerificationCode(length int) string {
 	return string(b)
 }
 
-func SendVerificationEmail(sess *session.Session, emailAddress string) {
+func SendVerificationEmail(sess *session.Session, emailAddress string, firstBotID int64, secondBotID int64) {
 	svc := ses.New(sess)
 
 	verificationCode := GenerateVerificationCode(6)
 
 	db := dynamodb.New(sess)
 	item := Verification{
-		Email: "gopankov.aa@gmail.com",
-		Code:  verificationCode,
+		Email:       emailAddress,
+		Code:        verificationCode,
+		FirstBotID:  firstBotID,
+		SecondBotID: secondBotID,
 	}
 	av, err := dynamodbattribute.MarshalMap(item)
 	if err != nil {
@@ -100,7 +105,35 @@ func VerifyCode(sess *session.Session, emailAddress string, code string) bool {
 		log.Fatalf("Error occurred while unmarshalling data %v", err)
 	}
 
-	_, err = db.DeleteItem(&dynamodb.DeleteItemInput{
+	if code == item.Code {
+		_, err = db.UpdateItem(&dynamodb.UpdateItemInput{
+			ExpressionAttributeValues: map[string]*dynamodb.AttributeValue{
+				":lv": {
+					S: aws.String(time.Now().Format(time.RFC3339)),
+				},
+			},
+			TableName: aws.String("users"),
+			Key: map[string]*dynamodb.AttributeValue{
+				"Email": {
+					S: aws.String(emailAddress),
+				},
+			},
+			ReturnValues:     aws.String("UPDATED_NEW"),
+			UpdateExpression: aws.String("set LastVerified = :lv"),
+		})
+		if err != nil {
+			log.Fatalf("Got error updating LastVerified: %s", err)
+		}
+		return true
+	} else {
+		return false
+	}
+}
+
+func ShouldSendVerificationEmail(sess *session.Session, emailAddress string) bool {
+	db := dynamodb.New(sess)
+
+	result, err := db.GetItem(&dynamodb.GetItemInput{
 		TableName: aws.String("users"),
 		Key: map[string]*dynamodb.AttributeValue{
 			"Email": {
@@ -108,14 +141,19 @@ func VerifyCode(sess *session.Session, emailAddress string, code string) bool {
 			},
 		},
 	})
-
 	if err != nil {
-		log.Fatalf("Got error calling DeleteItem: %s", err)
+		log.Fatalf("Error occurred while fetching data from DynamoDB %v", err)
 	}
 
-	if code == item.Code {
-		return true
-	} else {
-		return false
+	item := Verification{}
+	err = dynamodbattribute.UnmarshalMap(result.Item, &item)
+	if err != nil {
+		log.Fatalf("Error occurred while unmarshalling data %v", err)
 	}
+
+	if item.LastVerified.IsZero() || time.Since(item.LastVerified) > 24*time.Hour {
+		return true
+	}
+
+	return false
 }

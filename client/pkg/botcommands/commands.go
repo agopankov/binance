@@ -8,6 +8,7 @@ import (
 	"github.com/agopankov/binance/client/pkg/monitor"
 	"github.com/agopankov/binance/client/pkg/telegram"
 	"github.com/agopankov/binance/client/pkg/tracker"
+	"github.com/agopankov/binance/client/pkg/user"
 	"github.com/agopankov/binance/server/pkg/grpcbinance/proto"
 	"github.com/aws/aws-sdk-go/aws/session"
 	tele "gopkg.in/telebot.v3"
@@ -17,9 +18,9 @@ import (
 	"time"
 )
 
-func StartCommandHandlerFirstClient(m *tele.Message, telegramClient *telegram.Client, chatState *telegram.ChatState) {
+func StartCommandHandlerFirstClient(m *tele.Message, telegramClient *telegram.Client, usr *user.User) {
 	log.Printf("Received /start command from chat ID %d", m.Sender.ID)
-	chatState.SetState(telegram.StateAwaitingEmail)
+	usr.SetState(user.StateAwaitingEmail)
 	chatID := m.Sender.ID
 	recipient := &tele.User{ID: chatID}
 	if _, err := telegramClient.SendMessage(recipient, "Please enter your email address for verification"); err != nil {
@@ -27,9 +28,9 @@ func StartCommandHandlerFirstClient(m *tele.Message, telegramClient *telegram.Cl
 	}
 }
 
-func StartCommandHandlerSecondClient(m *tele.Message, secondTelegramClient *telegram.Client, chatState *telegram.ChatState) {
+func StartCommandHandlerSecondClient(m *tele.Message, secondTelegramClient *telegram.Client, usr *user.User) {
 	log.Printf("Received /start command from second chat ID %d", m.Sender.ID)
-	chatState.SetSecondChatID(m.Sender.ID)
+	usr.SetSecondChatID(m.Sender.ID)
 	secondChatID := m.Sender.ID
 	recipient := &tele.User{ID: secondChatID}
 	if _, err := secondTelegramClient.SendMessage(recipient, "The service for monitoring coins that are being pumped has been launched"); err != nil {
@@ -45,9 +46,9 @@ func StopCommandHandler(m *tele.Message, cancelFuncs *cancelfuncs.CancelFuncs) {
 	cancelFuncs.Remove(chatID)
 }
 
-func Change24PercentCommandHandler(m *tele.Message, telegramClient *telegram.Client, chatState *telegram.ChatState, changePercent24 *telegram.ChangePercent24) {
-	chatState.SetState(telegram.StateAwaitingPercent)
-	currentPercent24 := changePercent24.GetPercent()
+func Change24PercentCommandHandler(m *tele.Message, telegramClient *telegram.Client, usr *user.User) {
+	usr.SetState(user.StateAwaitingPercent)
+	currentPercent24 := usr.ChangePercent24.GetPercent()
 	chatID := m.Sender.ID
 	recipient := &tele.User{ID: chatID}
 	msg := fmt.Sprintf("Please enter the new percent value (current value is %.2f)", currentPercent24)
@@ -56,9 +57,9 @@ func Change24PercentCommandHandler(m *tele.Message, telegramClient *telegram.Cli
 	}
 }
 
-func SetWaitTimeCommandHandler(m *tele.Message, secondTelegramClient *telegram.Client, chatState *telegram.ChatState, pumpSettings *telegram.PumpSettings) {
-	chatState.SetState(telegram.StateAwaitingWaitTime)
-	currentWaitTime := pumpSettings.GetWaitTime()
+func SetWaitTimeCommandHandler(m *tele.Message, secondTelegramClient *telegram.Client, usr *user.User) {
+	usr.SetState(user.StateAwaitingWaitTime)
+	currentWaitTime := usr.PumpSettings.GetWaitTime()
 	chatID := m.Sender.ID
 	recipient := &tele.User{ID: chatID}
 	msg := fmt.Sprintf("Please enter the new wait time in minutes (current wait time is %s)", currentWaitTime)
@@ -67,9 +68,9 @@ func SetWaitTimeCommandHandler(m *tele.Message, secondTelegramClient *telegram.C
 	}
 }
 
-func SetPumpPercentCommandHandler(m *tele.Message, secondTelegramClient *telegram.Client, chatState *telegram.ChatState, pumpSettings *telegram.PumpSettings) {
-	chatState.SetState(telegram.StateAwaitingPercent)
-	currentPumpPercent := pumpSettings.GetPumpPercent()
+func SetPumpPercentCommandHandler(m *tele.Message, secondTelegramClient *telegram.Client, usr *user.User) {
+	usr.SetState(user.StateAwaitingPercent)
+	currentPumpPercent := usr.PumpSettings.GetPumpPercent()
 	chatID := m.Sender.ID
 	recipient := &tele.User{ID: chatID}
 	msg := fmt.Sprintf("Please enter the new percent value (current percent is %.2f)", currentPumpPercent)
@@ -78,9 +79,9 @@ func SetPumpPercentCommandHandler(m *tele.Message, secondTelegramClient *telegra
 	}
 }
 
-func MessageHandlerFirstClient(m *tele.Message, telegramClient *telegram.Client, secondTelegramClient *telegram.Client, cancelFuncs *cancelfuncs.CancelFuncs, chatState *telegram.ChatState, binanceClient proto.BinanceServiceClient, changePercent24 *telegram.ChangePercent24, pumpSettings *telegram.PumpSettings) {
-	switch chatState.GetState() {
-	case telegram.StateAwaitingEmail:
+func MessageHandlerFirstClient(m *tele.Message, telegramClient *telegram.Client, secondTelegramClient *telegram.Client, cancelFuncs *cancelfuncs.CancelFuncs, usr *user.User, binanceClient proto.BinanceServiceClient) {
+	switch usr.GetState() {
+	case user.StateAwaitingEmail:
 		email := m.Text
 		_, err := mail.ParseAddress(email)
 		if err != nil {
@@ -96,32 +97,53 @@ func MessageHandlerFirstClient(m *tele.Message, telegramClient *telegram.Client,
 		sess := session.Must(session.NewSessionWithOptions(session.Options{
 			SharedConfigState: session.SharedConfigEnable,
 		}))
-		chatState.SetEmail(email)
-		emailverify.SendVerificationEmail(sess, email)
 
-		chatID := m.Sender.ID
-		recipient := &tele.User{ID: chatID}
-		if _, err := telegramClient.SendMessage(recipient, "A verification code has been sent to your email. Please enter it."); err != nil {
-			log.Printf("Error sending message: %v", err)
-		}
-
-		chatState.SetState(telegram.StateAwaitingVerification)
-
-	case telegram.StateAwaitingVerification:
-		sess := session.Must(session.NewSessionWithOptions(session.Options{
-			SharedConfigState: session.SharedConfigEnable,
-		}))
-		if emailverify.VerifyCode(sess, chatState.GetEmail(), m.Text) {
+		if !emailverify.ShouldSendVerificationEmail(sess, email) {
 			chatID := m.Sender.ID
 			recipient := &tele.User{ID: chatID}
-			chatState.SetState(telegram.StateNone)
 
 			trackerInstance := tracker.NewTracker()
 
 			ctx, cancel := context.WithCancel(context.Background())
 			cancelFuncs.Add(chatID, cancel)
 
-			go monitor.PriceChanges(ctx, telegramClient, secondTelegramClient, binanceClient, chatState, trackerInstance, changePercent24, pumpSettings)
+			go monitor.PriceChanges(ctx, telegramClient, secondTelegramClient, binanceClient, usr, trackerInstance)
+
+			if _, err := telegramClient.SendMessage(recipient, "Tracking service launched"); err != nil {
+				log.Printf("Error sending message: %v", err)
+			} else {
+				log.Printf("Sent message to chat ID %d: %s", chatID, "Hi")
+			}
+			return
+		} else {
+			chatID := m.Sender.ID
+
+			usr.SetEmail(email)
+			emailverify.SendVerificationEmail(sess, email, usr.FirstChatID, usr.SecondChatID)
+
+			recipient := &tele.User{ID: chatID}
+			if _, err := telegramClient.SendMessage(recipient, "A verification code has been sent to your email. Please enter it."); err != nil {
+				log.Printf("Error sending message: %v", err)
+			}
+
+			usr.SetState(user.StateAwaitingVerification)
+		}
+
+	case user.StateAwaitingVerification:
+		sess := session.Must(session.NewSessionWithOptions(session.Options{
+			SharedConfigState: session.SharedConfigEnable,
+		}))
+		if emailverify.VerifyCode(sess, usr.GetEmail(), m.Text) {
+			chatID := m.Sender.ID
+			recipient := &tele.User{ID: chatID}
+			usr.SetState(user.StateNone)
+
+			trackerInstance := tracker.NewTracker()
+
+			ctx, cancel := context.WithCancel(context.Background())
+			cancelFuncs.Add(chatID, cancel)
+
+			go monitor.PriceChanges(ctx, telegramClient, secondTelegramClient, binanceClient, usr, trackerInstance)
 
 			if _, err := telegramClient.SendMessage(recipient, "Tracking service launched"); err != nil {
 				log.Printf("Error sending message: %v", err)
@@ -137,7 +159,7 @@ func MessageHandlerFirstClient(m *tele.Message, telegramClient *telegram.Client,
 			}
 		}
 
-	case telegram.StateAwaitingPercent:
+	case user.StateAwaitingPercent:
 		newPercent, err := strconv.ParseFloat(m.Text, 64)
 		if err != nil {
 			log.Printf("Invalid percent value: %v", err)
@@ -149,10 +171,10 @@ func MessageHandlerFirstClient(m *tele.Message, telegramClient *telegram.Client,
 			}
 			return
 		}
-		changePercent24.SetPercent(newPercent)
+		usr.ChangePercent24.SetPercent(newPercent)
 		log.Printf("Percent changed to %f", newPercent)
 
-		chatState.SetState(telegram.StateNone)
+		usr.SetState(user.StateNone)
 
 		chatID := m.Sender.ID
 		recipient := &tele.User{ID: chatID}
@@ -164,9 +186,9 @@ func MessageHandlerFirstClient(m *tele.Message, telegramClient *telegram.Client,
 	}
 }
 
-func MessageHandlerSecondClient(m *tele.Message, secondTelegramClient *telegram.Client, chatState *telegram.ChatState, pumpSettings *telegram.PumpSettings) {
-	switch chatState.GetState() {
-	case telegram.StateAwaitingPercent:
+func MessageHandlerSecondClient(m *tele.Message, secondTelegramClient *telegram.Client, usr *user.User) {
+	switch usr.GetState() {
+	case user.StateAwaitingPercent:
 		pumpPercent, err := strconv.ParseFloat(m.Text, 64)
 		if err != nil {
 			log.Printf("Invalid percent value: %v", err)
@@ -178,10 +200,10 @@ func MessageHandlerSecondClient(m *tele.Message, secondTelegramClient *telegram.
 			}
 			return
 		}
-		pumpSettings.SetPumpPercent(pumpPercent)
+		usr.PumpSettings.SetPumpPercent(pumpPercent)
 		log.Printf("Percent of pump changed to %f", pumpPercent)
 
-		chatState.SetState(telegram.StateNone)
+		usr.SetState(user.StateNone)
 
 		chatID := m.Sender.ID
 		recipient := &tele.User{ID: chatID}
@@ -191,7 +213,7 @@ func MessageHandlerSecondClient(m *tele.Message, secondTelegramClient *telegram.
 			log.Printf("Sent message to chat ID %d: %s", chatID, "The percentage expected for the pump has been changed")
 		}
 
-	case telegram.StateAwaitingWaitTime:
+	case user.StateAwaitingWaitTime:
 		waitTime, err := strconv.Atoi(m.Text)
 		if err != nil {
 			log.Printf("Invalid wait time value: %v", err)
@@ -203,10 +225,10 @@ func MessageHandlerSecondClient(m *tele.Message, secondTelegramClient *telegram.
 			}
 			return
 		}
-		pumpSettings.SetWaitTime(time.Duration(waitTime) * time.Minute)
+		usr.PumpSettings.SetWaitTime(time.Duration(waitTime) * time.Minute)
 		log.Printf("Wait time changed to %d minutes", waitTime)
 
-		chatState.SetState(telegram.StateNone)
+		usr.SetState(user.StateNone)
 
 		chatID := m.Sender.ID
 		recipient := &tele.User{ID: chatID}

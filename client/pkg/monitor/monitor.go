@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/agopankov/binance/client/pkg/telegram"
 	"github.com/agopankov/binance/client/pkg/tracker"
+	"github.com/agopankov/binance/client/pkg/user"
 	"github.com/agopankov/binance/server/pkg/grpcbinance/proto"
 	tele "gopkg.in/telebot.v3"
 	"log"
@@ -32,7 +33,7 @@ func getPriceForSymbol(symbol string, prices []*proto.USDTPrice) string {
 	return ""
 }
 
-func PriceChanges(ctx context.Context, client *telegram.Client, secondTelegramClient *telegram.Client, binanceClient proto.BinanceServiceClient, chatState *telegram.ChatState, trackerInstance *tracker.Tracker, changePercent24 *telegram.ChangePercent24, pumpSettings *telegram.PumpSettings) {
+func PriceChanges(ctx context.Context, client *telegram.Client, secondTelegramClient *telegram.Client, binanceClient proto.BinanceServiceClient, usr *user.User, trackerInstance *tracker.Tracker) {
 	ticker := time.NewTicker(5 * time.Second)
 	notifyTicker := time.NewTicker(1 * time.Minute)
 	logTicker := time.NewTicker(2 * time.Second)
@@ -44,16 +45,16 @@ func PriceChanges(ctx context.Context, client *telegram.Client, secondTelegramCl
 		case <-logTicker.C:
 			processLogTicker(trackerInstance)
 		case <-ticker.C:
-			processTicker(client, secondTelegramClient, binanceClient, chatState, trackerInstance, changePercent24, pumpSettings)
+			processTicker(client, secondTelegramClient, binanceClient, usr, trackerInstance)
 		case <-notifyTicker.C:
-			processNotifyTicker(client, binanceClient, chatState, trackerInstance)
+			processNotifyTicker(client, binanceClient, usr, trackerInstance)
 		}
 	}
 }
 
-func processTicker(telegramClient *telegram.Client, secondTelegramClient *telegram.Client, binanceClient proto.BinanceServiceClient, chatState *telegram.ChatState, trackerInstance *tracker.Tracker, changePercent24 *telegram.ChangePercent24, pumpSettings *telegram.PumpSettings) {
-	chatID := chatState.GetFirstChatID()
-	secondChatID := chatState.GetSecondChatID()
+func processTicker(telegramClient *telegram.Client, secondTelegramClient *telegram.Client, binanceClient proto.BinanceServiceClient, usr *user.User, trackerInstance *tracker.Tracker) {
+	chatID := usr.GetFirstChatID()
+	secondChatID := usr.GetSecondChatID()
 
 	ctx := context.Background()
 	usdtPrices, err := binanceClient.GetUSDTPrices(ctx, &proto.Empty{})
@@ -78,7 +79,7 @@ func processTicker(telegramClient *telegram.Client, secondTelegramClient *telegr
 			}
 		}
 
-		if change >= changePercent24.GetPercent() && !trackerInstance.IsTracked(price.Symbol) {
+		if change >= usr.ChangePercent24.GetPercent() && !trackerInstance.IsTracked(price.Symbol) {
 			newSymbol := tracker.SymbolChange{
 				Symbol:           price.Symbol,
 				PriceChange:      fmt.Sprintf("%.8f", price.Price),
@@ -121,7 +122,7 @@ func processTicker(telegramClient *telegram.Client, secondTelegramClient *telegr
 			}
 		}
 
-		if change24h <= changePercent24.GetPercent() {
+		if change24h <= usr.ChangePercent24.GetPercent() {
 			trackerInstance.RemoveTrackedSymbol(symbol)
 			continue
 		}
@@ -140,7 +141,7 @@ func processTicker(telegramClient *telegram.Client, secondTelegramClient *telegr
 		currentPriceFloat, _ := strconv.ParseFloat(currentPrice, 64)
 		previousPriceFloat, _ := strconv.ParseFloat(symbolChange.FirstPriceChange, 64)
 
-		if !symbolChange.NotificationOfPump && time.Since(symbolChange.AddedAt) <= pumpSettings.GetWaitTime() && (currentPriceFloat/previousPriceFloat)-1 >= pumpSettings.GetPumpPercent()/100 {
+		if !symbolChange.NotificationOfPump && time.Since(symbolChange.AddedAt) <= usr.PumpSettings.GetWaitTime() && (currentPriceFloat/previousPriceFloat)-1 >= usr.PumpSettings.GetPumpPercent()/100 {
 			log.Printf("Pump %s, current pump persent %.5f%%, firstPrice: %.7f, currentPrice: %.7f, notification: %t",
 				symbolChange.Symbol[:len(symbolChange.Symbol)-4],
 				((currentPriceFloat/previousPriceFloat)-1)*100,
@@ -173,8 +174,8 @@ func processTicker(telegramClient *telegram.Client, secondTelegramClient *telegr
 
 }
 
-func processNotifyTicker(telegramClient *telegram.Client, binanceClient proto.BinanceServiceClient, chatState *telegram.ChatState, trackerInstance *tracker.Tracker) {
-	chatID := chatState.GetFirstChatID()
+func processNotifyTicker(telegramClient *telegram.Client, binanceClient proto.BinanceServiceClient, usr *user.User, trackerInstance *tracker.Tracker) {
+	chatID := usr.GetFirstChatID()
 
 	ctx := context.Background()
 	usdtPrices, err := binanceClient.GetUSDTPrices(ctx, &proto.Empty{})
