@@ -30,7 +30,7 @@ func main() {
 	firstBotToken := secretsForTelegramBots.TelegramBotToken
 	secondBotToken := secretsForTelegramBots.TelegramBotTokenSecond
 
-	conn, err := grpc.NewGRPCConnection("binance-server:50051")
+	conn, err := grpc.NewGRPCConnection("imPulse-server:50051")
 	if err != nil {
 		log.Fatalf("Failed to connect to gRPC server: %v", err)
 	}
