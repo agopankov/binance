@@ -1,10 +1,10 @@
 syntax = "proto3";
 
-package imPulse;
+package binance;
 
 option go_package = "github.com/agopankov/imPulse/internal/grpcbinance";
 
-service imPulseService {
+service binanceService {
   rpc GetUSDTPrices (Empty) returns (USDTPricesResponse);
   rpc Get24hChangePercent (Empty) returns (ChangePercentResponse);
 }

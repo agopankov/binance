@@ -6,11 +6,11 @@ WORKDIR /app
 COPY go.mod go.sum ./
 RUN go mod download
 COPY . .
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o imPulse-client ./client/cmd/imPulse-client && \
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o impulse-client ./client/cmd/imPulse-client && \
     rm -rf /var/cache/apk/* && \
     rm -rf /tmp/*
 
 FROM --platform=linux/amd64 alpine:3.17
-COPY --from=build /app/imPulse-client /bin/imPulse-client
+COPY --from=build /app/impulse-client /bin/impulse-client
 
-CMD ["imPulse-client"]
+CMD ["impulse-client"]

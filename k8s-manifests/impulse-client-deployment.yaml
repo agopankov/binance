@@ -1,21 +1,21 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: imPulse-client
+  name: impulse-client
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: imPulse-client
+      app: impulse-client
   template:
     metadata:
       labels:
-        app: imPulse-client
+        app: impulse-client
     spec:
-      serviceAccountName: imPulse-app-sa
+      serviceAccountName: binance-app-sa
       containers:
-        - name: imPulse-client
-          image: 174907374174.dkr.ecr.eu-west-2.amazonaws.com/imPulse-client:latest
+        - name: impulse-client
+          image: 174907374174.dkr.ecr.eu-west-2.amazonaws.com/impulse-client:latest
           volumeMounts:
             - name: secrets-store-inline
               mountPath: "/mnt/secrets-store"
@@ -31,4 +31,4 @@ spec:
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: imPulse-client-config
+  name: impulse-client-config

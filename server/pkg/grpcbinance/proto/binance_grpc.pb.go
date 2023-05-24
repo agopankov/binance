@@ -142,5 +142,5 @@ var BinanceService_ServiceDesc = grpc.ServiceDesc{
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
-	Metadata: "binance.proto",
+	Metadata: "imPulseimPulse.proto",
 }

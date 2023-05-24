@@ -2,22 +2,22 @@
 version: "3.9"
 
 services:
-  imPulse-server:
+  impulse-server:
     build:
       context: .
       dockerfile: Dockerfile.server
-    image: binance-server
+    image: impulse-server
     environment:
       BINANCE_API_KEY: ${BINANCE_API_KEY}
       BINANCE_SECRET_KEY: ${BINANCE_SECRET_KEY}
     ports:
       - "50051:50051"
 
-  imPulse-client:
+  impulse-client:
     build:
       context: .
       dockerfile: Dockerfile.client
-    image: imPulse-client
+    image: impulse-client
     environment:
       AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
       AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
@@ -25,4 +25,4 @@ services:
       TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
       TELEGRAM_BOT_TOKEN_SECOND: ${TELEGRAM_BOT_TOKEN_SECOND}
     depends_on:
-      - imPulse-server
+      - impulse-server
