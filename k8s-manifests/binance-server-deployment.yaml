@@ -1,21 +1,21 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: binance-server
+  name: imPulse-server
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: binance-server
+      app: imPulse-server
   template:
     metadata:
       labels:
-        app: binance-server
+        app: imPulse-server
     spec:
-      serviceAccountName: binance-app-sa
+      serviceAccountName: imPulse-app-sa
       containers:
-        - name: binance-server
-          image: 174907374174.dkr.ecr.eu-west-2.amazonaws.com/binance-server:latest
+        - name: imPulse-server
+          image: 174907374174.dkr.ecr.eu-west-2.amazonaws.com/imPulse-server:latest
           ports:
             - containerPort: 50051
           volumeMounts:
@@ -33,10 +33,10 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: binance-server
+  name: imPulse-server
 spec:
   selector:
-    app: binance-server
+    app: imPulse-server
   ports:
     - protocol: TCP
       port: 50051

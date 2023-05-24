@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package binance;
 
-option go_package = "github.com/agopankov/binance/internal/grpcbinance";
+option go_package = "github.com/agopankov/imPulse/internal/grpcbinance";
 
 service BinanceService {
   rpc GetUSDTPrices (Empty) returns (USDTPricesResponse);

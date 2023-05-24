@@ -1,7 +1,7 @@
 package telegram
 
 import (
-	"github.com/agopankov/binance/server/pkg/grpcbinance/proto"
+	"github.com/agopankov/imPulse/server/pkg/grpcbinance/proto"
 	"time"
 
 	tele "gopkg.in/telebot.v3"

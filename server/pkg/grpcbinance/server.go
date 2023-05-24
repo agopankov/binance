@@ -3,7 +3,7 @@ package grpcbinance
 import (
 	"context"
 	"github.com/adshao/go-binance/v2"
-	"github.com/agopankov/binance/server/pkg/grpcbinance/proto"
+	"github.com/agopankov/imPulse/server/pkg/grpcbinance/proto"
 	"strconv"
 	"strings"
 )

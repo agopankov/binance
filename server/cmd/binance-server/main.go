@@ -2,8 +2,8 @@ package main
 
 import (
 	"encoding/json"
-	"github.com/agopankov/binance/server/pkg/grpcbinance"
-	"github.com/agopankov/binance/server/pkg/grpcbinance/proto"
+	"github.com/agopankov/imPulse/server/pkg/grpcbinance"
+	"github.com/agopankov/imPulse/server/pkg/grpcbinance/proto"
 	"google.golang.org/grpc"
 	"log"
 	"net"

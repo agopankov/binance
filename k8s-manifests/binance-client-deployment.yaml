@@ -1,21 +1,21 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: binance-client
+  name: imPulse-client
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: binance-client
+      app: imPulse-client
   template:
     metadata:
       labels:
-        app: binance-client
+        app: imPulse-client
     spec:
-      serviceAccountName: binance-app-sa
+      serviceAccountName: imPulse-app-sa
       containers:
-        - name: binance-client
-          image: 174907374174.dkr.ecr.eu-west-2.amazonaws.com/binance-client:latest
+        - name: imPulse-client
+          image: 174907374174.dkr.ecr.eu-west-2.amazonaws.com/imPulse-client:latest
           volumeMounts:
             - name: secrets-store-inline
               mountPath: "/mnt/secrets-store"
@@ -31,4 +31,4 @@ spec:
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: binance-client-config
+  name: imPulse-client-config

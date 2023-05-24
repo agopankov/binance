@@ -1,4 +1,4 @@
-module github.com/agopankov/binance
+module github.com/agopankov/imPulse
 
 go 1.20
 

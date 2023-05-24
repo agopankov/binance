@@ -1,13 +1,13 @@
 package main
 
 import (
-	"github.com/agopankov/binance/client/pkg/botcommands"
-	"github.com/agopankov/binance/client/pkg/cancelfuncs"
-	"github.com/agopankov/binance/client/pkg/grpc"
-	"github.com/agopankov/binance/client/pkg/secrets"
-	"github.com/agopankov/binance/client/pkg/telegram"
-	"github.com/agopankov/binance/client/pkg/user"
-	"github.com/agopankov/binance/server/pkg/grpcbinance/proto"
+	"github.com/agopankov/imPulse/client/pkg/botcommands"
+	"github.com/agopankov/imPulse/client/pkg/cancelfuncs"
+	"github.com/agopankov/imPulse/client/pkg/grpc"
+	"github.com/agopankov/imPulse/client/pkg/secrets"
+	"github.com/agopankov/imPulse/client/pkg/telegram"
+	"github.com/agopankov/imPulse/client/pkg/user"
+	"github.com/agopankov/imPulse/server/pkg/grpcbinance/proto"
 	tele "gopkg.in/telebot.v3"
 	"log"
 	"time"
