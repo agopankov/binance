@@ -14,7 +14,6 @@ import (
 )
 
 func main() {
-
 	userManager := user.NewUserManager()
 
 	usr := user.NewUser()
