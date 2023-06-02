@@ -3,6 +3,7 @@ package main
 import (
 	"github.com/agopankov/imPulse/client/pkg/botcommands"
 	"github.com/agopankov/imPulse/client/pkg/cancelfuncs"
+	"github.com/agopankov/imPulse/client/pkg/database"
 	"github.com/agopankov/imPulse/client/pkg/grpc"
 	"github.com/agopankov/imPulse/client/pkg/secrets"
 	"github.com/agopankov/imPulse/client/pkg/telegram"
@@ -10,11 +11,24 @@ import (
 	"github.com/agopankov/imPulse/server/pkg/grpcbinance/proto"
 	tele "gopkg.in/telebot.v3"
 	"log"
+	"os"
 	"time"
 )
 
 func main() {
-	userManager := user.NewUserManager()
+	var db database.Database
+	var err error
+
+	if os.Getenv("DB") == "mongodb" {
+		db, err = database.NewMongoDB("mongodb://mongo:27017")
+		if err != nil {
+			log.Fatalf("Failed to connect to MongoDB: %v", err)
+		}
+	} else {
+		db = &database.DynamoDB{}
+	}
+
+	userManager := user.NewUserManagerWithDB(db)
 
 	usr := user.NewUser()
 	usr.ChangePercent24.SetPercent(20)
@@ -119,7 +133,7 @@ func main() {
 			return
 		}
 
-		botcommands.MessageHandlerFirstClient(m, telegramClient, secondTelegramClient, cancelFuncs, usr, binanceClient)
+		botcommands.MessageHandlerFirstClient(m, telegramClient, secondTelegramClient, cancelFuncs, usr, binanceClient, userManager)
 	})
 
 	secondTelegramClient.HandleOnMessage(func(m *tele.Message) {

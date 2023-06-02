@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"github.com/agopankov/imPulse/client/pkg/cancelfuncs"
-	"github.com/agopankov/imPulse/client/pkg/emailverify"
 	"github.com/agopankov/imPulse/client/pkg/monitor"
 	"github.com/agopankov/imPulse/client/pkg/telegram"
 	"github.com/agopankov/imPulse/client/pkg/tracker"
@@ -21,23 +20,13 @@ import (
 func StartCommandHandlerFirstClient(m *tele.Message, telegramClient *telegram.Client, usr *user.User) {
 	log.Printf("Received /start command from chat ID %d", m.Sender.ID)
 	usr.SetState(user.StateAwaitingEmail)
-	chatID := m.Sender.ID
-	recipient := &tele.User{ID: chatID}
-	if _, err := telegramClient.SendMessage(recipient, "Please enter your email address for verification"); err != nil {
-		log.Printf("Error sending message: %v", err)
-	}
+	sendMessage(telegramClient, m.Sender.ID, "Please enter your email address for verification")
 }
 
 func StartCommandHandlerSecondClient(m *tele.Message, secondTelegramClient *telegram.Client, usr *user.User) {
 	log.Printf("Received /start command from second chat ID %d", m.Sender.ID)
 	usr.SetSecondChatID(m.Sender.ID)
-	secondChatID := m.Sender.ID
-	recipient := &tele.User{ID: secondChatID}
-	if _, err := secondTelegramClient.SendMessage(recipient, "The service for monitoring coins that are being pumped has been launched"); err != nil {
-		log.Printf("Error sending message to second chat: %v", err)
-	} else {
-		log.Printf("Sent message to second chat ID %d: %s", secondChatID, "Hi")
-	}
+	sendMessage(secondTelegramClient, m.Sender.ID, "The service for monitoring coins that are being pumped has been launched")
 }
 
 func StopCommandHandler(m *tele.Message, cancelFuncs *cancelfuncs.CancelFuncs) {
@@ -79,7 +68,7 @@ func SetPumpPercentCommandHandler(m *tele.Message, secondTelegramClient *telegra
 	}
 }
 
-func MessageHandlerFirstClient(m *tele.Message, telegramClient *telegram.Client, secondTelegramClient *telegram.Client, cancelFuncs *cancelfuncs.CancelFuncs, usr *user.User, binanceClient proto.BinanceServiceClient) {
+func MessageHandlerFirstClient(m *tele.Message, telegramClient *telegram.Client, secondTelegramClient *telegram.Client, cancelFuncs *cancelfuncs.CancelFuncs, usr *user.User, binanceClient proto.BinanceServiceClient, userManager *user.UserManager) {
 	switch usr.GetState() {
 	case user.StateAwaitingEmail:
 		email := m.Text
@@ -98,7 +87,7 @@ func MessageHandlerFirstClient(m *tele.Message, telegramClient *telegram.Client,
 			SharedConfigState: session.SharedConfigEnable,
 		}))
 
-		if !emailverify.ShouldSendVerificationEmail(sess, email) {
+		if !userManager.Db.ShouldSendVerificationEmail(sess, email) {
 			chatID := m.Sender.ID
 			recipient := &tele.User{ID: chatID}
 
@@ -119,7 +108,7 @@ func MessageHandlerFirstClient(m *tele.Message, telegramClient *telegram.Client,
 			chatID := m.Sender.ID
 
 			usr.SetEmail(email)
-			emailverify.SendVerificationEmail(sess, email, usr.FirstChatID, usr.SecondChatID)
+			userManager.Db.SendVerificationEmail(sess, email, usr.FirstChatID, usr.SecondChatID)
 
 			recipient := &tele.User{ID: chatID}
 			if _, err := telegramClient.SendMessage(recipient, "A verification code has been sent to your email. Please enter it."); err != nil {
@@ -133,7 +122,7 @@ func MessageHandlerFirstClient(m *tele.Message, telegramClient *telegram.Client,
 		sess := session.Must(session.NewSessionWithOptions(session.Options{
 			SharedConfigState: session.SharedConfigEnable,
 		}))
-		if emailverify.VerifyCode(sess, usr.GetEmail(), m.Text) {
+		if userManager.Db.VerifyCode(sess, usr.GetEmail(), m.Text) {
 			chatID := m.Sender.ID
 			recipient := &tele.User{ID: chatID}
 			usr.SetState(user.StateNone)
@@ -163,26 +152,13 @@ func MessageHandlerFirstClient(m *tele.Message, telegramClient *telegram.Client,
 		newPercent, err := strconv.ParseFloat(m.Text, 64)
 		if err != nil {
 			log.Printf("Invalid percent value: %v", err)
-
-			chatID := m.Sender.ID
-			recipient := &tele.User{ID: chatID}
-			if _, err := telegramClient.SendMessage(recipient, "Invalid percent value, please enter a valid number"); err != nil {
-				log.Printf("Error sending message: %v", err)
-			}
+			sendMessage(telegramClient, m.Sender.ID, "Invalid percent value, please enter a valid number")
 			return
 		}
 		usr.ChangePercent24.SetPercent(newPercent)
 		log.Printf("Percent changed to %f", newPercent)
-
 		usr.SetState(user.StateNone)
-
-		chatID := m.Sender.ID
-		recipient := &tele.User{ID: chatID}
-		if _, err := telegramClient.SendMessage(recipient, "The percentage of pumping for tracked coins has been changed"); err != nil {
-			log.Printf("Error sending message: %v", err)
-		} else {
-			log.Printf("Sent message to chat ID %d: %s", chatID, "The percentage of pumping for tracked coins has been changed")
-		}
+		sendMessage(telegramClient, m.Sender.ID, "The percentage of pumping for tracked coins has been changed")
 	}
 }
 
@@ -237,5 +213,12 @@ func MessageHandlerSecondClient(m *tele.Message, secondTelegramClient *telegram.
 		} else {
 			log.Printf("Sent message to chat ID %d: %s", chatID, "The wait time for coin pumping has been changed")
 		}
+	}
+}
+
+func sendMessage(telegramClient *telegram.Client, chatID int64, msg string) {
+	recipient := &tele.User{ID: chatID}
+	if _, err := telegramClient.SendMessage(recipient, msg); err != nil {
+		log.Printf("Error sending message: %v", err)
 	}
 }

@@ -1,6 +1,7 @@
 package user
 
 import (
+	"github.com/agopankov/imPulse/client/pkg/database"
 	"sync"
 	"time"
 )
@@ -18,6 +19,7 @@ const (
 type UserManager struct {
 	users map[int64]*User
 	mu    sync.Mutex
+	Db    database.Database
 }
 
 type User struct {
@@ -41,9 +43,10 @@ type PumpSettings struct {
 	pumpPercent float64
 }
 
-func NewUserManager() *UserManager {
+func NewUserManagerWithDB(db database.Database) *UserManager {
 	return &UserManager{
 		users: make(map[int64]*User),
+		Db:    db,
 	}
 }
 
