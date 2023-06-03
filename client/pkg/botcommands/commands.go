@@ -9,7 +9,6 @@ import (
 	"github.com/agopankov/imPulse/client/pkg/tracker"
 	"github.com/agopankov/imPulse/client/pkg/user"
 	"github.com/agopankov/imPulse/server/pkg/grpcbinance/proto"
-	"github.com/aws/aws-sdk-go/aws/session"
 	tele "gopkg.in/telebot.v3"
 	"log"
 	"net/mail"
@@ -83,11 +82,7 @@ func MessageHandlerFirstClient(m *tele.Message, telegramClient *telegram.Client,
 			return
 		}
 
-		sess := session.Must(session.NewSessionWithOptions(session.Options{
-			SharedConfigState: session.SharedConfigEnable,
-		}))
-
-		if !userManager.Db.ShouldSendVerificationEmail(sess, email) {
+		if !userManager.Db.ShouldSendVerificationEmail(email) {
 			chatID := m.Sender.ID
 			recipient := &tele.User{ID: chatID}
 
@@ -108,7 +103,7 @@ func MessageHandlerFirstClient(m *tele.Message, telegramClient *telegram.Client,
 			chatID := m.Sender.ID
 
 			usr.SetEmail(email)
-			userManager.Db.SendVerificationEmail(sess, email, usr.FirstChatID, usr.SecondChatID, postmarkToken)
+			userManager.Db.SendVerificationEmail(email, usr.FirstChatID, usr.SecondChatID, postmarkToken)
 
 			recipient := &tele.User{ID: chatID}
 			if _, err := telegramClient.SendMessage(recipient, "A verification code has been sent to your email. Please enter it."); err != nil {
@@ -119,10 +114,7 @@ func MessageHandlerFirstClient(m *tele.Message, telegramClient *telegram.Client,
 		}
 
 	case user.StateAwaitingVerification:
-		sess := session.Must(session.NewSessionWithOptions(session.Options{
-			SharedConfigState: session.SharedConfigEnable,
-		}))
-		if userManager.Db.VerifyCode(sess, usr.GetEmail(), m.Text) {
+		if userManager.Db.VerifyCode(usr.GetEmail(), m.Text) {
 			chatID := m.Sender.ID
 			recipient := &tele.User{ID: chatID}
 			usr.SetState(user.StateNone)

@@ -13,7 +13,8 @@ import (
 
 type DynamoDB struct{}
 
-func (d *DynamoDB) SendVerificationEmail(sess *session.Session, emailAddress string, firstBotID int64, secondBotID int64, postmarkToken string) {
+func (d *DynamoDB) SendVerificationEmail(emailAddress string, firstBotID int64, secondBotID int64, postmarkToken string) {
+	sess := sess()
 	verificationCode := emailverify.GenerateVerificationCode(6)
 
 	db := dynamodb.New(sess)
@@ -42,7 +43,8 @@ func (d *DynamoDB) SendVerificationEmail(sess *session.Session, emailAddress str
 	sender.SendEmail(emailAddress, "Your verification code", "Your verification code is: "+verificationCode)
 }
 
-func (d *DynamoDB) VerifyCode(sess *session.Session, emailAddress string, code string) bool {
+func (d *DynamoDB) VerifyCode(emailAddress string, code string) bool {
+	sess := sess()
 	db := dynamodb.New(sess)
 
 	result, err := db.GetItem(&dynamodb.GetItemInput{
@@ -88,7 +90,8 @@ func (d *DynamoDB) VerifyCode(sess *session.Session, emailAddress string, code s
 	}
 }
 
-func (d *DynamoDB) ShouldSendVerificationEmail(sess *session.Session, emailAddress string) bool {
+func (d *DynamoDB) ShouldSendVerificationEmail(emailAddress string) bool {
+	sess := sess()
 	db := dynamodb.New(sess)
 
 	result, err := db.GetItem(&dynamodb.GetItemInput{
@@ -114,4 +117,10 @@ func (d *DynamoDB) ShouldSendVerificationEmail(sess *session.Session, emailAddre
 	}
 
 	return false
+}
+
+func sess() *session.Session {
+	return session.Must(session.NewSessionWithOptions(session.Options{
+		SharedConfigState: session.SharedConfigEnable,
+	}))
 }

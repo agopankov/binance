@@ -4,7 +4,6 @@ import (
 	"context"
 	"github.com/agopankov/imPulse/client/pkg/emailsender"
 	"github.com/agopankov/imPulse/client/pkg/emailverify"
-	"github.com/aws/aws-sdk-go/aws/session"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -31,7 +30,7 @@ func NewMongoDB(uri string) (*MongoDB, error) {
 	return &MongoDB{client: client}, nil
 }
 
-func (m *MongoDB) SendVerificationEmail(sess *session.Session, emailAddress string, firstBotID int64, secondBotID int64, postmarkToken string) {
+func (m *MongoDB) SendVerificationEmail(emailAddress string, firstBotID int64, secondBotID int64, postmarkToken string) {
 	verificationCode := emailverify.GenerateVerificationCode(6)
 
 	collection := m.client.Database("impulse").Collection("users")
@@ -50,7 +49,7 @@ func (m *MongoDB) SendVerificationEmail(sess *session.Session, emailAddress stri
 	sender.SendEmail(emailAddress, "Your verification code", "Your verification code is: "+verificationCode)
 }
 
-func (m *MongoDB) VerifyCode(sess *session.Session, emailAddress string, code string) bool {
+func (m *MongoDB) VerifyCode(emailAddress string, code string) bool {
 	collection := m.client.Database("impulse").Collection("users")
 
 	var item Verification
@@ -70,7 +69,7 @@ func (m *MongoDB) VerifyCode(sess *session.Session, emailAddress string, code st
 	}
 }
 
-func (m *MongoDB) ShouldSendVerificationEmail(sess *session.Session, emailAddress string) bool {
+func (m *MongoDB) ShouldSendVerificationEmail(emailAddress string) bool {
 	databases, err := m.ListDatabases()
 	if err != nil {
 		log.Fatalf("Failed to get database list: %v", err)
