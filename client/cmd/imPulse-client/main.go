@@ -1,13 +1,13 @@
 package main
 
 import (
-	"github.com/agopankov/imPulse/client/pkg/botcommands"
-	"github.com/agopankov/imPulse/client/pkg/cancelfuncs"
-	"github.com/agopankov/imPulse/client/pkg/database"
-	"github.com/agopankov/imPulse/client/pkg/grpc"
-	"github.com/agopankov/imPulse/client/pkg/secrets"
-	"github.com/agopankov/imPulse/client/pkg/telegram"
-	"github.com/agopankov/imPulse/client/pkg/user"
+	"github.com/agopankov/imPulse/client/internal/botcommands"
+	"github.com/agopankov/imPulse/client/internal/cancelfuncs"
+	"github.com/agopankov/imPulse/client/internal/database"
+	"github.com/agopankov/imPulse/client/internal/grpc"
+	"github.com/agopankov/imPulse/client/internal/secrets"
+	"github.com/agopankov/imPulse/client/internal/telegram"
+	"github.com/agopankov/imPulse/client/internal/user"
 	"github.com/agopankov/imPulse/server/pkg/grpcbinance/proto"
 	tele "gopkg.in/telebot.v3"
 	"log"

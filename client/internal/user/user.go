@@ -1,7 +1,7 @@
 package user
 
 import (
-	"github.com/agopankov/imPulse/client/pkg/database"
+	"github.com/agopankov/imPulse/client/internal/database"
 	"sync"
 	"time"
 )

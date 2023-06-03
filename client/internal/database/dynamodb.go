@@ -1,8 +1,8 @@
 package database
 
 import (
-	"github.com/agopankov/imPulse/client/pkg/emailsender"
-	"github.com/agopankov/imPulse/client/pkg/emailverify"
+	"github.com/agopankov/imPulse/client/internal/emailsender"
+	"github.com/agopankov/imPulse/client/internal/emailverify"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/dynamodb"

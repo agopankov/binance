@@ -3,9 +3,9 @@ package monitor
 import (
 	"context"
 	"fmt"
-	"github.com/agopankov/imPulse/client/pkg/telegram"
-	"github.com/agopankov/imPulse/client/pkg/tracker"
-	"github.com/agopankov/imPulse/client/pkg/user"
+	"github.com/agopankov/imPulse/client/internal/telegram"
+	"github.com/agopankov/imPulse/client/internal/tracker"
+	"github.com/agopankov/imPulse/client/internal/user"
 	"github.com/agopankov/imPulse/server/pkg/grpcbinance/proto"
 	tele "gopkg.in/telebot.v3"
 	"log"

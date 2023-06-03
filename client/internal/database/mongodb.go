@@ -2,8 +2,8 @@ package database
 
 import (
 	"context"
-	"github.com/agopankov/imPulse/client/pkg/emailsender"
-	"github.com/agopankov/imPulse/client/pkg/emailverify"
+	"github.com/agopankov/imPulse/client/internal/emailsender"
+	"github.com/agopankov/imPulse/client/internal/emailverify"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
