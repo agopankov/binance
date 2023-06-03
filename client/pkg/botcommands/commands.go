@@ -68,7 +68,7 @@ func SetPumpPercentCommandHandler(m *tele.Message, secondTelegramClient *telegra
 	}
 }
 
-func MessageHandlerFirstClient(m *tele.Message, telegramClient *telegram.Client, secondTelegramClient *telegram.Client, cancelFuncs *cancelfuncs.CancelFuncs, usr *user.User, binanceClient proto.BinanceServiceClient, userManager *user.UserManager) {
+func MessageHandlerFirstClient(m *tele.Message, telegramClient *telegram.Client, secondTelegramClient *telegram.Client, cancelFuncs *cancelfuncs.CancelFuncs, usr *user.User, binanceClient proto.BinanceServiceClient, userManager *user.UserManager, postmarkToken string) {
 	switch usr.GetState() {
 	case user.StateAwaitingEmail:
 		email := m.Text
@@ -108,7 +108,7 @@ func MessageHandlerFirstClient(m *tele.Message, telegramClient *telegram.Client,
 			chatID := m.Sender.ID
 
 			usr.SetEmail(email)
-			userManager.Db.SendVerificationEmail(sess, email, usr.FirstChatID, usr.SecondChatID)
+			userManager.Db.SendVerificationEmail(sess, email, usr.FirstChatID, usr.SecondChatID, postmarkToken)
 
 			recipient := &tele.User{ID: chatID}
 			if _, err := telegramClient.SendMessage(recipient, "A verification code has been sent to your email. Please enter it."); err != nil {

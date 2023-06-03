@@ -36,13 +36,14 @@ func main() {
 	usr.PumpSettings.SetPumpPercent(5)
 	usr.PumpSettings.SetWaitTime(15 * time.Minute)
 
-	secretsForTelegramBots, err := secrets.LoadSecrets()
+	secretsForApplication, err := secrets.LoadSecrets()
 	if err != nil {
 		log.Fatalf("Failed to load secrets: %v", err)
 	}
 
-	firstBotToken := secretsForTelegramBots.TelegramBotToken
-	secondBotToken := secretsForTelegramBots.TelegramBotTokenSecond
+	firstBotToken := secretsForApplication.TelegramBotToken
+	secondBotToken := secretsForApplication.TelegramBotTokenSecond
+	postmarkToken := secretsForApplication.PostmarkToken
 
 	conn, err := grpc.NewGRPCConnection("impulse-server:50051")
 	if err != nil {
@@ -133,7 +134,7 @@ func main() {
 			return
 		}
 
-		botcommands.MessageHandlerFirstClient(m, telegramClient, secondTelegramClient, cancelFuncs, usr, binanceClient, userManager)
+		botcommands.MessageHandlerFirstClient(m, telegramClient, secondTelegramClient, cancelFuncs, usr, binanceClient, userManager, postmarkToken)
 	})
 
 	secondTelegramClient.HandleOnMessage(func(m *tele.Message) {

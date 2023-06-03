@@ -8,6 +8,7 @@ import (
 type SecretKeys struct {
 	TelegramBotToken       string `json:"TELEGRAM_BOT_TOKEN"`
 	TelegramBotTokenSecond string `json:"TELEGRAM_BOT_TOKEN_SECOND"`
+	PostmarkToken          string `json:"POSTMARK_TOKEN"`
 }
 
 func LoadSecrets() (*SecretKeys, error) {
@@ -15,6 +16,7 @@ func LoadSecrets() (*SecretKeys, error) {
 
 	firstBotToken := os.Getenv("TELEGRAM_BOT_TOKEN")
 	secondBotToken := os.Getenv("TELEGRAM_BOT_TOKEN_SECOND")
+	postmarkToken := os.Getenv("POSTMARK_TOKEN")
 
 	if firstBotToken == "" || secondBotToken == "" {
 		secretsFile, err := os.ReadFile("/mnt/secrets-store/prod_binance_secret")
@@ -29,6 +31,7 @@ func LoadSecrets() (*SecretKeys, error) {
 		secrets = SecretKeys{
 			TelegramBotToken:       firstBotToken,
 			TelegramBotTokenSecond: secondBotToken,
+			PostmarkToken:          postmarkToken,
 		}
 	}
 	return &secrets, nil

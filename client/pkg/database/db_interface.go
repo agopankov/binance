@@ -14,7 +14,7 @@ type Verification struct {
 }
 
 type Database interface {
-	SendVerificationEmail(sess *session.Session, emailAddress string, firstBotID int64, secondBotID int64)
+	SendVerificationEmail(sess *session.Session, emailAddress string, firstBotID int64, secondBotID int64, postmarkToken string)
 	VerifyCode(sess *session.Session, emailAddress string, code string) bool
 	ShouldSendVerificationEmail(sess *session.Session, emailAddress string) bool
 }

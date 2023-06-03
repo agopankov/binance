@@ -8,13 +8,12 @@ import (
 	"github.com/aws/aws-sdk-go/service/dynamodb"
 	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbattribute"
 	"log"
-	"os"
 	"time"
 )
 
 type DynamoDB struct{}
 
-func (d *DynamoDB) SendVerificationEmail(sess *session.Session, emailAddress string, firstBotID int64, secondBotID int64) {
+func (d *DynamoDB) SendVerificationEmail(sess *session.Session, emailAddress string, firstBotID int64, secondBotID int64, postmarkToken string) {
 	verificationCode := emailverify.GenerateVerificationCode(6)
 
 	db := dynamodb.New(sess)
@@ -39,7 +38,7 @@ func (d *DynamoDB) SendVerificationEmail(sess *session.Session, emailAddress str
 		log.Fatalf("Got error calling PutItem: %s", err)
 	}
 
-	sender := emailsender.NewEmailSender(os.Getenv("POSTMARK_TOKEN"))
+	sender := emailsender.NewEmailSender(postmarkToken)
 	sender.SendEmail(emailAddress, "Your verification code", "Your verification code is: "+verificationCode)
 }
 

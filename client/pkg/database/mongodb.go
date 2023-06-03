@@ -9,7 +9,6 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"log"
-	"os"
 	"time"
 )
 
@@ -32,7 +31,7 @@ func NewMongoDB(uri string) (*MongoDB, error) {
 	return &MongoDB{client: client}, nil
 }
 
-func (m *MongoDB) SendVerificationEmail(sess *session.Session, emailAddress string, firstBotID int64, secondBotID int64) {
+func (m *MongoDB) SendVerificationEmail(sess *session.Session, emailAddress string, firstBotID int64, secondBotID int64, postmarkToken string) {
 	verificationCode := emailverify.GenerateVerificationCode(6)
 
 	collection := m.client.Database("impulse").Collection("users")
@@ -47,7 +46,7 @@ func (m *MongoDB) SendVerificationEmail(sess *session.Session, emailAddress stri
 		log.Fatalf("Got error inserting item: %s", err)
 	}
 
-	sender := emailsender.NewEmailSender(os.Getenv("POSTMARK_TOKEN"))
+	sender := emailsender.NewEmailSender(postmarkToken)
 	sender.SendEmail(emailAddress, "Your verification code", "Your verification code is: "+verificationCode)
 }
 
