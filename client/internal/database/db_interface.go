@@ -16,4 +16,5 @@ type Database interface {
 	SendVerificationEmail(emailAddress string, firstBotID int64, secondBotID int64, postmarkToken string)
 	VerifyCode(emailAddress string, code string) bool
 	ShouldSendVerificationEmail(emailAddress string) bool
+	GetAllUsers() ([]Verification, error)
 }

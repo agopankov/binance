@@ -93,7 +93,7 @@ func MessageHandlerFirstClient(m *tele.Message, telegramClient *telegram.Client,
 
 			go monitor.PriceChanges(ctx, telegramClient, secondTelegramClient, binanceClient, usr, trackerInstance)
 
-			if _, err := telegramClient.SendMessage(recipient, "Tracking service launched"); err != nil {
+			if _, err := telegramClient.SendMessage(recipient, "Tracking service launched.\nTo launch the second chatbot, which will receive notifications about the pump of crypto assets, you need to go to it:\n@imPulseSignal_bot\nand send the /start command."); err != nil {
 				log.Printf("Error sending message: %v", err)
 			} else {
 				log.Printf("Sent message to chat ID %d: %s", chatID, "Hi")
@@ -126,7 +126,7 @@ func MessageHandlerFirstClient(m *tele.Message, telegramClient *telegram.Client,
 
 			go monitor.PriceChanges(ctx, telegramClient, secondTelegramClient, binanceClient, usr, trackerInstance)
 
-			if _, err := telegramClient.SendMessage(recipient, "Tracking service launched"); err != nil {
+			if _, err := telegramClient.SendMessage(recipient, "Tracking service launched.\nTo launch the second chatbot, which will receive notifications about the pump of crypto assets, you need to go to it:\n@imPulseSignal_bot\nand send the /start command."); err != nil {
 				log.Printf("Error sending message: %v", err)
 			} else {
 				log.Printf("Sent message to chat ID %d: %s", chatID, "Hi")

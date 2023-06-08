@@ -124,3 +124,24 @@ func sess() *session.Session {
 		SharedConfigState: session.SharedConfigEnable,
 	}))
 }
+
+func (d *DynamoDB) GetAllUsers() ([]Verification, error) {
+	sess := sess()
+	db := dynamodb.New(sess)
+
+	input := &dynamodb.ScanInput{
+		TableName: aws.String("users"),
+	}
+	result, err := db.Scan(input)
+	if err != nil {
+		return nil, err
+	}
+
+	var users []Verification
+	err = dynamodbattribute.UnmarshalListOfMaps(result.Items, &users)
+	if err != nil {
+		return nil, err
+	}
+
+	return users, nil
+}

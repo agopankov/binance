@@ -100,3 +100,19 @@ func (m *MongoDB) ListDatabases() ([]string, error) {
 
 	return m.client.ListDatabaseNames(ctx, bson.M{})
 }
+
+func (m *MongoDB) GetAllUsers() ([]Verification, error) {
+	collection := m.client.Database("impulse").Collection("users")
+
+	cursor, err := collection.Find(context.Background(), bson.D{})
+	if err != nil {
+		return nil, err
+	}
+
+	var users []Verification
+	if err = cursor.All(context.Background(), &users); err != nil {
+		return nil, err
+	}
+
+	return users, nil
+}

@@ -6,6 +6,7 @@ import (
 	"github.com/agopankov/imPulse/client/internal/database"
 	"github.com/agopankov/imPulse/client/internal/grpc"
 	"github.com/agopankov/imPulse/client/internal/secrets"
+	"github.com/agopankov/imPulse/client/internal/servicerestartnotification"
 	"github.com/agopankov/imPulse/client/internal/telegram"
 	"github.com/agopankov/imPulse/client/internal/user"
 	"github.com/agopankov/imPulse/server/pkg/grpcbinance/proto"
@@ -68,6 +69,8 @@ func main() {
 	}
 
 	cancelFuncs := cancelfuncs.NewCancelFuncs()
+
+	servicerestartnotification.SendServiceRestartNotifications(db, telegramClient, secondTelegramClient)
 
 	telegramClient.HandleCommand("/start", func(m *tele.Message) {
 		usr, ok := userManager.GetUser(m.Sender.ID)
