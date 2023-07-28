@@ -1,16 +1,14 @@
 package telegram
 
 import (
-	"github.com/agopankov/imPulse/server/pkg/grpcbinance/proto"
 	"time"
 
 	tele "gopkg.in/telebot.v3"
 )
 
 type Client struct {
-	botToken      string
-	bot           *tele.Bot
-	binanceClient proto.BinanceServiceClient
+	botToken string
+	bot      *tele.Bot
 }
 
 func NewClient(botToken string) (*Client, error) {
